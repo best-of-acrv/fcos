@@ -1,0 +1,15 @@
+name: pytorch-fcos
+channels:
+  - defaults
+  - pytorch
+  - conda-forge
+dependencies:
+  - cudatoolkit=10.1
+  - pytorch==1.4.0
+  - torchvision
+  - tqdm
+  - opencv
+  - matplotlib
+  - scikit-image
+  - cython
+  - yacs

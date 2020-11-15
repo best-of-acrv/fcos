@@ -20,8 +20,7 @@ from fcos_core.utils.miscellaneous import mkdir
 # get arguments
 parser = argparse.ArgumentParser(description='PyTorch FCOS')
 parser.add_argument('--name', type=str, default='fcos', help='custom prefix for naming model')
-parser.add_argument('--model', type=str, default='FCOS_imprv_R_50_FPN_1x', help='name of model to use')
-parser.add_argument("--config-file", default="configs/fcos/fcos_imprv_R_50_FPN_1x.yaml", metavar="FILE", help="path to config file")
+parser.add_argument("--config-file", default="configs/fcos/FCOS_imprv_R_50_FPN_1x.yaml", metavar="FILE", help="path to config file")
 parser.add_argument('--save_directory', type=str, default='runs', help='save model directory')
 parser.add_argument('--load_directory', type=str, default=None, help='load model directory')
 parser.add_argument('--gpu', type=int, default=0, help='GPU id to use')

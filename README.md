@@ -56,9 +56,9 @@ To evaluate with one of the pretrained models, run ```eval.py```.
  
 You can specify the desired model CNN backbone (ResNet-50 or ResNet-101)
 For example, to evaluate using a ResNet-50 backbone and generate sample detection images, run the following command from the root directory:
-```python eval.py --sample_images True --config-file configs/fcos/fcos_imprv_R_50_FPN_1x.yaml MODEL.WEIGHT FCOS_imprv_R_50_FPN_1x.pth```
+```python eval.py --sample_images True --config-file configs/fcos/FCOS_imprv_R_50_FPN_1x.yaml MODEL.WEIGHT FCOS_imprv_R_50_FPN_1x.pth```
 
-Pretrained FCOS models will be automatically downloaded and stored in the ```pretrained/models``` directory.
+Please check the ```configs``` folder for currently supported models. Pretrained FCOS models will be automatically downloaded and stored in the ```pretrained/models``` directory.
 Alternatively, if you wish to load your own pretrained model, you can do this by specifying a load directory (e.g.):
 ```python eval.py --load_directory=runs/mymodel```
 

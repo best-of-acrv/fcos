@@ -19,8 +19,7 @@ from fcos_core.utils.miscellaneous import mkdir
 # get arguments
 parser = argparse.ArgumentParser(description='PyTorch FCOS')
 parser.add_argument('--name', type=str, default='fcos', help='custom prefix for naming model')
-parser.add_argument('--model', type=str, default='FCOS_imprv_R_50_FPN_1x', help='name of model to use')
-parser.add_argument("--config-file", default="configs/fcos/fcos_imprv_R_50_FPN_1x.yaml", metavar="FILE", help="path to config file")
+parser.add_argument("--config-file", default="configs/fcos/FCOS_imprv_R_50_FPN.yaml", metavar="FILE", help="path to config file")
 parser.add_argument('--save_directory', type=str, default='runs', help='save model directory')
 parser.add_argument('--load_directory', type=str, default='pretrained', help='load directory of model')
 parser.add_argument('--download_model', type=bool, default=True, help='download a pretrained model')
@@ -37,7 +36,10 @@ os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 torch.manual_seed(args.seed)
 
 pretrained_urls = {
-    'FCOS_imprv_R_50_FPN_1x': 'https://cloudstor.aarnet.edu.au/plus/s/Jn3WqLvpr2fIxP8/download',
+    'FCOS_imprv_R_50_FPN_1x': 'https://cloudstor.aarnet.edu.au/plus/s/FIk1vwAIuavXush/download',
+    'FCOS_imprv_dcnv2_R_50_FPN_1x': 'https://cloudstor.aarnet.edu.au/plus/s/Jn3WqLvpr2fIxP8/download',
+    'FCOS_imprv_R_101_FPN_2x': 'https://cloudstor.aarnet.edu.au/plus/s/7QkpbVPOhos8KWA/download',
+    'FCOS_imprv_dcnv2_R_101_FPN_2x': 'https://cloudstor.aarnet.edu.au/plus/s/JIB57ThahAJuUBy/download',
 }
 
 if __name__ == '__main__':
@@ -64,8 +66,9 @@ if __name__ == '__main__':
         map_location = None
         if not torch.cuda.is_available():
             map_location = torch.device('cpu')
-        url = pretrained_urls[args.model]
-        _ = download_model(args.model, url, map_location=map_location)
+        config_model = os.path.splitext(os.path.basename(args.config_file))[0]
+        url = pretrained_urls[config_model]
+        _ = download_model(config_model, url, map_location=map_location)
 
     # load model checkpoint
     checkpointer = DetectronCheckpointer(cfg, model, save_dir=args.save_directory)

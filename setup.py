@@ -1,4 +1,44 @@
+from glob import glob
+import os
+from pkg_resources import resource_filename
 from setuptools import find_packages, setup
+import torch
+import torch.utils.cpp_extension as tcpp
+
+
+def get_extensions():
+    root = resource_filename('fcos', os.path.join('core', 'csrc'))
+    is_cuda = ((torch.cuda.is_available() and tcpp.CUDA_HOME is not None) or
+               os.os.getenv("FORCE_CUDA", "0") == "1")
+
+    ext = tcpp.CUDAExtension if is_cuda else tcpp.CppExtension
+
+    source_main = glob(os.path.join(root, '*.cpp'))[0]
+    sources_cpu = glob(os.path.join(root, 'cpu', '*.cpp'))
+    sources = [source_main] + sources_cpu + (glob(
+        os.path.join(root, 'cuda', '*.cu')) if is_cuda else [])
+
+    define_macros = [("WITH_CUDA", None)] if is_cuda else []
+    extra_compile_args = {
+        "cxx": [],
+        **({
+            "nvcc": [
+                "-DCUDA_HAS_FP16=1",
+                "-D__CUDA_NO_HALF_OPERATORS__",
+                "-D__CUDA_NO_HALF_CONVERSIONS__",
+                "-D__CUDA_NO_HALF2_OPERATORS__",
+            ]
+        } if is_cuda else {})
+    }
+
+    return [
+        ext("fcos_core._C",
+            sources,
+            include_dirs=[root],
+            define_macros=define_macros,
+            extra_compile_args=extra_compile_args)
+    ]
+
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -12,6 +52,8 @@ setup(name='fcos',
       long_description_content_type='text/markdown',
       packages=find_packages(),
       install_requires=['acrv_datasets'],
+      ext_modules=get_extensions(),
+      cmdclass={"build_ext": tcpp.BuildExtension},
       classifiers=(
           "Development Status :: 4 - Beta",
           "Programming Language :: Python :: 3",

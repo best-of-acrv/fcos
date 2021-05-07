@@ -1,4 +1,5 @@
 import os
+import torch
 
 from .core.config import cfg
 from .core.data import make_data_loader
@@ -20,7 +21,30 @@ class Fcos(object):
                  load_snapshot=None,
                  model_seed=0,
                  name='fcos'):
-        pass
+        # Apply sanitised args
+        # TODO sanitising...
+        self.config_file = config_file
+        self.config_list = config_list
+        self.gpu_id = gpu_id
+        self.model_seed = model_seed
+        self.name = name
+
+        # TODO handle loading arguments...
+
+        # Try setting up GPU integration
+        os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
+        os.environ['CUDA_VISIBLE_DEVICES'] = str(self.gpu_id)
+        torch.manual_seed(self.model_seed)
+
+        # Load and merge configuration, then freeze it
+        if self.config_file is not None:
+            cfg.merge_from_file(self.config_file)
+        if self.config_list is not None and self.config_list:
+            cfg.merge_from_list(self.config_list)
+        cfg.freeze()
+
+        # Load model based on the specified parameters
+        # TODO
 
     def evaluate(self,
                  *,

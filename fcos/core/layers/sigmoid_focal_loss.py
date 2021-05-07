@@ -3,10 +3,12 @@ from torch import nn
 from torch.autograd import Function
 from torch.autograd.function import once_differentiable
 
-from fcos_core import _C
+from .. import _C
+
 
 # TODO: Use JIT to replace CUDA implementation in the future.
 class _SigmoidFocalLoss(Function):
+
     @staticmethod
     def forward(ctx, logits, targets, gamma, alpha):
         ctx.save_for_backward(logits, targets)
@@ -15,9 +17,8 @@ class _SigmoidFocalLoss(Function):
         ctx.gamma = gamma
         ctx.alpha = alpha
 
-        losses = _C.sigmoid_focalloss_forward(
-            logits, targets, num_classes, gamma, alpha
-        )
+        losses = _C.sigmoid_focalloss_forward(logits, targets, num_classes,
+                                              gamma, alpha)
         return losses
 
     @staticmethod
@@ -28,9 +29,8 @@ class _SigmoidFocalLoss(Function):
         gamma = ctx.gamma
         alpha = ctx.alpha
         d_loss = d_loss.contiguous()
-        d_logits = _C.sigmoid_focalloss_backward(
-            logits, targets, d_loss, num_classes, gamma, alpha
-        )
+        d_logits = _C.sigmoid_focalloss_backward(logits, targets, d_loss,
+                                                 num_classes, gamma, alpha)
         return d_logits, None, None, None, None
 
 
@@ -43,16 +43,19 @@ def sigmoid_focal_loss_cpu(logits, targets, gamma, alpha):
     alpha = alpha[0]
     dtype = targets.dtype
     device = targets.device
-    class_range = torch.arange(1, num_classes+1, dtype=dtype, device=device).unsqueeze(0)
+    class_range = torch.arange(1, num_classes + 1, dtype=dtype,
+                               device=device).unsqueeze(0)
 
     t = targets.unsqueeze(1)
     p = torch.sigmoid(logits)
-    term1 = (1 - p) ** gamma * torch.log(p)
-    term2 = p ** gamma * torch.log(1 - p)
-    return -(t == class_range).float() * term1 * alpha - ((t != class_range) * (t >= 0)).float() * term2 * (1 - alpha)
+    term1 = (1 - p)**gamma * torch.log(p)
+    term2 = p**gamma * torch.log(1 - p)
+    return -(t == class_range).float() * term1 * alpha - (
+        (t != class_range) * (t >= 0)).float() * term2 * (1 - alpha)
 
 
 class SigmoidFocalLoss(nn.Module):
+
     def __init__(self, gamma, alpha):
         super(SigmoidFocalLoss, self).__init__()
         self.gamma = gamma

@@ -18,16 +18,14 @@ Custom implementations may be written in user code and hooked in via the
 """
 from collections import namedtuple
 
-import torch
 import torch.nn.functional as F
 from torch import nn
 
-from fcos_core.layers import FrozenBatchNorm2d
-from fcos_core.layers import Conv2d
-from fcos_core.layers import DFConv2d
-from fcos_core.modeling.make_layers import group_norm
-from fcos_core.utils.registry import Registry
-
+from ...layers import FrozenBatchNorm2d
+from ...layers import Conv2d
+from ...layers import DFConv2d
+from ...modeling.make_layers import group_norm
+from ...utils.registry import Registry
 
 # ResNet stage specification
 StageSpec = namedtuple(
@@ -45,40 +43,37 @@ StageSpec = namedtuple(
 # ResNet-50 (including all stages)
 ResNet50StagesTo5 = tuple(
     StageSpec(index=i, block_count=c, return_features=r)
-    for (i, c, r) in ((1, 3, False), (2, 4, False), (3, 6, False), (4, 3, True))
-)
+    for (i, c, r) in ((1, 3, False), (2, 4, False), (3, 6, False), (4, 3,
+                                                                    True)))
 # ResNet-50 up to stage 4 (excludes stage 5)
 ResNet50StagesTo4 = tuple(
     StageSpec(index=i, block_count=c, return_features=r)
-    for (i, c, r) in ((1, 3, False), (2, 4, False), (3, 6, True))
-)
+    for (i, c, r) in ((1, 3, False), (2, 4, False), (3, 6, True)))
 # ResNet-101 (including all stages)
 ResNet101StagesTo5 = tuple(
     StageSpec(index=i, block_count=c, return_features=r)
-    for (i, c, r) in ((1, 3, False), (2, 4, False), (3, 23, False), (4, 3, True))
-)
+    for (i, c, r) in ((1, 3, False), (2, 4, False), (3, 23, False), (4, 3,
+                                                                     True)))
 # ResNet-101 up to stage 4 (excludes stage 5)
 ResNet101StagesTo4 = tuple(
     StageSpec(index=i, block_count=c, return_features=r)
-    for (i, c, r) in ((1, 3, False), (2, 4, False), (3, 23, True))
-)
+    for (i, c, r) in ((1, 3, False), (2, 4, False), (3, 23, True)))
 # ResNet-50-FPN (including all stages)
 ResNet50FPNStagesTo5 = tuple(
     StageSpec(index=i, block_count=c, return_features=r)
-    for (i, c, r) in ((1, 3, True), (2, 4, True), (3, 6, True), (4, 3, True))
-)
+    for (i, c, r) in ((1, 3, True), (2, 4, True), (3, 6, True), (4, 3, True)))
 # ResNet-101-FPN (including all stages)
 ResNet101FPNStagesTo5 = tuple(
     StageSpec(index=i, block_count=c, return_features=r)
-    for (i, c, r) in ((1, 3, True), (2, 4, True), (3, 23, True), (4, 3, True))
-)
+    for (i, c, r) in ((1, 3, True), (2, 4, True), (3, 23, True), (4, 3, True)))
 # ResNet-152-FPN (including all stages)
 ResNet152FPNStagesTo5 = tuple(
     StageSpec(index=i, block_count=c, return_features=r)
-    for (i, c, r) in ((1, 3, True), (2, 8, True), (3, 36, True), (4, 3, True))
-)
+    for (i, c, r) in ((1, 3, True), (2, 8, True), (3, 36, True), (4, 3, True)))
+
 
 class ResNet(nn.Module):
+
     def __init__(self, cfg):
         super(ResNet, self).__init__()
 
@@ -89,7 +84,8 @@ class ResNet(nn.Module):
         # Translate string names to implementations
         stem_module = _STEM_MODULES[cfg.MODEL.RESNETS.STEM_FUNC]
         stage_specs = _STAGE_SPECS[cfg.MODEL.BACKBONE.CONV_BODY]
-        transformation_module = _TRANSFORMATION_MODULES[cfg.MODEL.RESNETS.TRANS_FUNC]
+        transformation_module = _TRANSFORMATION_MODULES[
+            cfg.MODEL.RESNETS.TRANS_FUNC]
 
         # Construct the stem module
         self.stem = stem_module(cfg)
@@ -104,10 +100,11 @@ class ResNet(nn.Module):
         self.return_features = {}
         for stage_spec in stage_specs:
             name = "layer" + str(stage_spec.index)
-            stage2_relative_factor = 2 ** (stage_spec.index - 1)
+            stage2_relative_factor = 2**(stage_spec.index - 1)
             bottleneck_channels = stage2_bottleneck_channels * stage2_relative_factor
             out_channels = stage2_out_channels * stage2_relative_factor
-            stage_with_dcn = cfg.MODEL.RESNETS.STAGE_WITH_DCN[stage_spec.index - 1]
+            stage_with_dcn = cfg.MODEL.RESNETS.STAGE_WITH_DCN[stage_spec.index
+                                                              - 1]
             module = _make_stage(
                 transformation_module,
                 in_channels,
@@ -121,8 +118,7 @@ class ResNet(nn.Module):
                     "stage_with_dcn": stage_with_dcn,
                     "with_modulated_dcn": cfg.MODEL.RESNETS.WITH_MODULATED_DCN,
                     "deformable_groups": cfg.MODEL.RESNETS.DEFORMABLE_GROUPS,
-                }
-            )
+                })
             in_channels = out_channels
             self.add_module(name, module)
             self.stages.append(name)
@@ -153,21 +149,20 @@ class ResNet(nn.Module):
 
 
 class ResNetHead(nn.Module):
-    def __init__(
-        self,
-        block_module,
-        stages,
-        num_groups=1,
-        width_per_group=64,
-        stride_in_1x1=True,
-        stride_init=None,
-        res2_out_channels=256,
-        dilation=1,
-        dcn_config=None
-    ):
+
+    def __init__(self,
+                 block_module,
+                 stages,
+                 num_groups=1,
+                 width_per_group=64,
+                 stride_in_1x1=True,
+                 stride_init=None,
+                 res2_out_channels=256,
+                 dilation=1,
+                 dcn_config=None):
         super(ResNetHead, self).__init__()
 
-        stage2_relative_factor = 2 ** (stages[0].index - 1)
+        stage2_relative_factor = 2**(stages[0].index - 1)
         stage2_bottleneck_channels = num_groups * width_per_group
         out_channels = res2_out_channels * stage2_relative_factor
         in_channels = out_channels // 2
@@ -181,18 +176,16 @@ class ResNetHead(nn.Module):
             name = "layer" + str(stage.index)
             if not stride:
                 stride = int(stage.index > 1) + 1
-            module = _make_stage(
-                block_module,
-                in_channels,
-                bottleneck_channels,
-                out_channels,
-                stage.block_count,
-                num_groups,
-                stride_in_1x1,
-                first_stride=stride,
-                dilation=dilation,
-                dcn_config=dcn_config
-            )
+            module = _make_stage(block_module,
+                                 in_channels,
+                                 bottleneck_channels,
+                                 out_channels,
+                                 stage.block_count,
+                                 num_groups,
+                                 stride_in_1x1,
+                                 first_stride=stride,
+                                 dilation=dilation,
+                                 dcn_config=dcn_config)
             stride = None
             self.add_module(name, module)
             self.stages.append(name)
@@ -204,70 +197,60 @@ class ResNetHead(nn.Module):
         return x
 
 
-def _make_stage(
-    transformation_module,
-    in_channels,
-    bottleneck_channels,
-    out_channels,
-    block_count,
-    num_groups,
-    stride_in_1x1,
-    first_stride,
-    dilation=1,
-    dcn_config=None
-):
+def _make_stage(transformation_module,
+                in_channels,
+                bottleneck_channels,
+                out_channels,
+                block_count,
+                num_groups,
+                stride_in_1x1,
+                first_stride,
+                dilation=1,
+                dcn_config=None):
     blocks = []
     stride = first_stride
     for _ in range(block_count):
         blocks.append(
-            transformation_module(
-                in_channels,
-                bottleneck_channels,
-                out_channels,
-                num_groups,
-                stride_in_1x1,
-                stride,
-                dilation=dilation,
-                dcn_config=dcn_config
-            )
-        )
+            transformation_module(in_channels,
+                                  bottleneck_channels,
+                                  out_channels,
+                                  num_groups,
+                                  stride_in_1x1,
+                                  stride,
+                                  dilation=dilation,
+                                  dcn_config=dcn_config))
         stride = 1
         in_channels = out_channels
     return nn.Sequential(*blocks)
 
 
 class Bottleneck(nn.Module):
-    def __init__(
-        self,
-        in_channels,
-        bottleneck_channels,
-        out_channels,
-        num_groups,
-        stride_in_1x1,
-        stride,
-        dilation,
-        norm_func,
-        dcn_config
-    ):
+
+    def __init__(self, in_channels, bottleneck_channels, out_channels,
+                 num_groups, stride_in_1x1, stride, dilation, norm_func,
+                 dcn_config):
         super(Bottleneck, self).__init__()
 
         self.downsample = None
         if in_channels != out_channels:
             down_stride = stride if dilation == 1 else 1
             self.downsample = nn.Sequential(
-                Conv2d(
-                    in_channels, out_channels,
-                    kernel_size=1, stride=down_stride, bias=False
-                ),
+                Conv2d(in_channels,
+                       out_channels,
+                       kernel_size=1,
+                       stride=down_stride,
+                       bias=False),
                 norm_func(out_channels),
             )
-            for modules in [self.downsample,]:
+            for modules in [
+                    self.downsample,
+            ]:
                 for l in modules.modules():
                     if isinstance(l, Conv2d):
                         nn.init.kaiming_uniform_(l.weight, a=1)
 
         if dilation > 1:
-            stride = 1 # reset to be 1
+            stride = 1  # reset to be 1
 
         # The original MSRA ResNet models have stride in the first 1x1 conv
         # The subsequent fb.torch.resnet and Caffe2 ResNe[X]t implementations have
@@ -287,38 +270,38 @@ class Bottleneck(nn.Module):
         if with_dcn:
             deformable_groups = dcn_config.get("deformable_groups", 1)
             with_modulated_dcn = dcn_config.get("with_modulated_dcn", False)
-            self.conv2 = DFConv2d(
-                bottleneck_channels,
-                bottleneck_channels,
-                with_modulated_dcn=with_modulated_dcn,
-                kernel_size=3,
-                stride=stride_3x3,
-                groups=num_groups,
-                dilation=dilation,
-                deformable_groups=deformable_groups,
-                bias=False
-            )
+            self.conv2 = DFConv2d(bottleneck_channels,
+                                  bottleneck_channels,
+                                  with_modulated_dcn=with_modulated_dcn,
+                                  kernel_size=3,
+                                  stride=stride_3x3,
+                                  groups=num_groups,
+                                  dilation=dilation,
+                                  deformable_groups=deformable_groups,
+                                  bias=False)
         else:
-            self.conv2 = Conv2d(
-                bottleneck_channels,
-                bottleneck_channels,
-                kernel_size=3,
-                stride=stride_3x3,
-                padding=dilation,
-                bias=False,
-                groups=num_groups,
-                dilation=dilation
-            )
+            self.conv2 = Conv2d(bottleneck_channels,
+                                bottleneck_channels,
+                                kernel_size=3,
+                                stride=stride_3x3,
+                                padding=dilation,
+                                bias=False,
+                                groups=num_groups,
+                                dilation=dilation)
             nn.init.kaiming_uniform_(self.conv2.weight, a=1)
 
         self.bn2 = norm_func(bottleneck_channels)
 
-        self.conv3 = Conv2d(
-            bottleneck_channels, out_channels, kernel_size=1, bias=False
-        )
+        self.conv3 = Conv2d(bottleneck_channels,
+                            out_channels,
+                            kernel_size=1,
+                            bias=False)
         self.bn3 = norm_func(out_channels)
 
-        for l in [self.conv1, self.conv3,]:
+        for l in [
+                self.conv1,
+                self.conv3,
+        ]:
             nn.init.kaiming_uniform_(l.weight, a=1)
 
     def forward(self, x):
@@ -345,17 +328,23 @@ class Bottleneck(nn.Module):
 
 
 class BaseStem(nn.Module):
+
     def __init__(self, cfg, norm_func):
         super(BaseStem, self).__init__()
 
         out_channels = cfg.MODEL.RESNETS.STEM_OUT_CHANNELS
 
-        self.conv1 = Conv2d(
-            3, out_channels, kernel_size=7, stride=2, padding=3, bias=False
-        )
+        self.conv1 = Conv2d(3,
+                            out_channels,
+                            kernel_size=7,
+                            stride=2,
+                            padding=3,
+                            bias=False)
         self.bn1 = norm_func(out_channels)
 
-        for l in [self.conv1,]:
+        for l in [
+                self.conv1,
+        ]:
             nn.init.kaiming_uniform_(l.weight, a=1)
 
     def forward(self, x):
@@ -367,63 +356,60 @@ class BaseStem(nn.Module):
 
 
 class BottleneckWithFixedBatchNorm(Bottleneck):
-    def __init__(
-        self,
-        in_channels,
-        bottleneck_channels,
-        out_channels,
-        num_groups=1,
-        stride_in_1x1=True,
-        stride=1,
-        dilation=1,
-        dcn_config=None
-    ):
-        super(BottleneckWithFixedBatchNorm, self).__init__(
-            in_channels=in_channels,
-            bottleneck_channels=bottleneck_channels,
-            out_channels=out_channels,
-            num_groups=num_groups,
-            stride_in_1x1=stride_in_1x1,
-            stride=stride,
-            dilation=dilation,
-            norm_func=FrozenBatchNorm2d,
-            dcn_config=dcn_config
-        )
+
+    def __init__(self,
+                 in_channels,
+                 bottleneck_channels,
+                 out_channels,
+                 num_groups=1,
+                 stride_in_1x1=True,
+                 stride=1,
+                 dilation=1,
+                 dcn_config=None):
+        super(BottleneckWithFixedBatchNorm,
+              self).__init__(in_channels=in_channels,
+                             bottleneck_channels=bottleneck_channels,
+                             out_channels=out_channels,
+                             num_groups=num_groups,
+                             stride_in_1x1=stride_in_1x1,
+                             stride=stride,
+                             dilation=dilation,
+                             norm_func=FrozenBatchNorm2d,
+                             dcn_config=dcn_config)
 
 
 class StemWithFixedBatchNorm(BaseStem):
+
     def __init__(self, cfg):
-        super(StemWithFixedBatchNorm, self).__init__(
-            cfg, norm_func=FrozenBatchNorm2d
-        )
+        super(StemWithFixedBatchNorm,
+              self).__init__(cfg, norm_func=FrozenBatchNorm2d)
 
 
 class BottleneckWithGN(Bottleneck):
-    def __init__(
-        self,
-        in_channels,
-        bottleneck_channels,
-        out_channels,
-        num_groups=1,
-        stride_in_1x1=True,
-        stride=1,
-        dilation=1,
-        dcn_config=None
-    ):
-        super(BottleneckWithGN, self).__init__(
-            in_channels=in_channels,
-            bottleneck_channels=bottleneck_channels,
-            out_channels=out_channels,
-            num_groups=num_groups,
-            stride_in_1x1=stride_in_1x1,
-            stride=stride,
-            dilation=dilation,
-            norm_func=group_norm,
-            dcn_config=dcn_config
-        )
+
+    def __init__(self,
+                 in_channels,
+                 bottleneck_channels,
+                 out_channels,
+                 num_groups=1,
+                 stride_in_1x1=True,
+                 stride=1,
+                 dilation=1,
+                 dcn_config=None):
+        super(BottleneckWithGN,
+              self).__init__(in_channels=in_channels,
+                             bottleneck_channels=bottleneck_channels,
+                             out_channels=out_channels,
+                             num_groups=num_groups,
+                             stride_in_1x1=stride_in_1x1,
+                             stride=stride,
+                             dilation=dilation,
+                             norm_func=group_norm,
+                             dcn_config=dcn_config)
 
 
 class StemWithGN(BaseStem):
+
     def __init__(self, cfg):
         super(StemWithGN, self).__init__(cfg, norm_func=group_norm)
 

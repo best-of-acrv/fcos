@@ -1,16 +1,11 @@
 import cv2
 import copy
 import torch
-import numpy as np
-from fcos_core.layers.misc import interpolate
-
 import pycocotools.mask as mask_utils
 
 # transpose
 FLIP_LEFT_RIGHT = 0
 FLIP_TOP_BOTTOM = 1
-
-
 """ ABSTRACT
 Segmentations come in either:
 1) Binary masks
@@ -60,23 +55,25 @@ class BinaryMaskList(object):
                 masks = mask_utils
             else:
                 RuntimeError(
-                    "Type of `masks[0]` could not be interpreted: %s" % type(masks)
-                )
+                    "Type of `masks[0]` could not be interpreted: %s" %
+                    type(masks))
         elif isinstance(masks, BinaryMaskList):
             # just hard copy the BinaryMaskList instance's underlying data
             masks = masks.masks.clone()
         else:
             RuntimeError(
-                "Type of `masks` argument could not be interpreted:%s" % type(masks)
-            )
+                "Type of `masks` argument could not be interpreted:%s" %
+                type(masks))
 
         if len(masks.shape) == 2:
             # if only a single instance mask is passed
             masks = masks[None]
 
         assert len(masks.shape) == 3
-        assert masks.shape[1] == size[1], "%s != %s" % (masks.shape[1], size[1])
-        assert masks.shape[2] == size[0], "%s != %s" % (masks.shape[2], size[0])
+        assert masks.shape[1] == size[1], "%s != %s" % (masks.shape[1],
+                                                        size[1])
+        assert masks.shape[2] == size[0], "%s != %s" % (masks.shape[2],
+                                                        size[0])
 
         self.masks = masks
         self.size = tuple(size)
@@ -140,14 +137,14 @@ class BinaryMaskList(object):
         masks = self.masks.detach().numpy()
         for mask in masks:
             mask = cv2.UMat(mask)
-            contour, hierarchy = cv2.findContours(
-                mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1
-            )
+            contour, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL,
+                                                  cv2.CHAIN_APPROX_TC89_L1)
 
             reshaped_contour = []
             for entity in contour:
                 assert len(entity.shape) == 3
-                assert entity.shape[1] == 1, "Hierarchical contours are not allowed"
+                assert entity.shape[
+                    1] == 1, "Hierarchical contours are not allowed"
                 reshaped_contour.append(entity.reshape(-1).tolist())
             contours.append(reshaped_contour)
         return contours
@@ -197,10 +194,8 @@ class PolygonInstance(object):
         elif isinstance(polygons, PolygonInstance):
             polygons = copy.copy(polygons.polygons)
         else:
-            RuntimeError(
-                "Type of argument `polygons` is not allowed:%s" % (type(polygons))
-            )
-
+            RuntimeError("Type of argument `polygons` is not allowed:%s" %
+                         (type(polygons)))
         """ This crashes the training way too many times...
         for p in polygons:
             assert p[::2].min() >= 0
@@ -215,8 +210,7 @@ class PolygonInstance(object):
     def transpose(self, method):
         if method not in (FLIP_LEFT_RIGHT, FLIP_TOP_BOTTOM):
             raise NotImplementedError(
-                "Only FLIP_LEFT_RIGHT and FLIP_TOP_BOTTOM implemented"
-            )
+                "Only FLIP_LEFT_RIGHT and FLIP_TOP_BOTTOM implemented")
 
         flipped_polygons = []
         width, height = self.size
@@ -270,7 +264,8 @@ class PolygonInstance(object):
             assert isinstance(size, (int, float))
             size = size, size
 
-        ratios = tuple(float(s) / float(s_orig) for s, s_orig in zip(size, self.size))
+        ratios = tuple(
+            float(s) / float(s_orig) for s, s_orig in zip(size, self.size))
 
         if ratios[0] == ratios[1]:
             ratio = ratios[0]
@@ -337,20 +332,19 @@ class PolygonList(object):
             if len(polygons) == 0:
                 polygons = [[[]]]
             if isinstance(polygons[0], (list, tuple)):
-                assert isinstance(polygons[0][0], (list, tuple)), str(
-                    type(polygons[0][0])
-                )
+                assert isinstance(polygons[0][0],
+                                  (list, tuple)), str(type(polygons[0][0]))
             else:
-                assert isinstance(polygons[0], PolygonInstance), str(type(polygons[0]))
+                assert isinstance(polygons[0],
+                                  PolygonInstance), str(type(polygons[0]))
 
         elif isinstance(polygons, PolygonList):
             size = polygons.size
             polygons = polygons.polygons
 
         else:
-            RuntimeError(
-                "Type of argument `polygons` is not allowed:%s" % (type(polygons))
-            )
+            RuntimeError("Type of argument `polygons` is not allowed:%s" %
+                         (type(polygons)))
 
         assert isinstance(size, (list, tuple)), str(type(size))
 
@@ -365,8 +359,7 @@ class PolygonList(object):
     def transpose(self, method):
         if method not in (FLIP_LEFT_RIGHT, FLIP_TOP_BOTTOM):
             raise NotImplementedError(
-                "Only FLIP_LEFT_RIGHT and FLIP_TOP_BOTTOM implemented"
-            )
+                "Only FLIP_LEFT_RIGHT and FLIP_TOP_BOTTOM implemented")
 
         flipped_polygons = []
         for polygon in self.polygons:
@@ -396,7 +389,8 @@ class PolygonList(object):
 
     def convert_to_binarymask(self):
         if len(self) > 0:
-            masks = torch.stack([p.convert_to_binarymask() for p in self.polygons])
+            masks = torch.stack(
+                [p.convert_to_binarymask() for p in self.polygons])
         else:
             size = self.size
             masks = torch.empty([0, size[1], size[0]], dtype=torch.uint8)
@@ -435,7 +429,6 @@ class PolygonList(object):
 
 
 class SegmentationMask(object):
-
     """
     This class stores the segmentations for all objects in the image.
     It wraps BinaryMaskList and PolygonList conveniently.
@@ -524,7 +517,7 @@ class SegmentationMask(object):
             self.iter_idx += 1
             return next_segmentation
         raise StopIteration()
-        
+
     next = __next__  # Python 2 compatibility
 
     def __repr__(self):

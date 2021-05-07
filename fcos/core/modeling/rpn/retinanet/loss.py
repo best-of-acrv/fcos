@@ -7,21 +7,21 @@ import torch
 from torch.nn import functional as F
 
 from ..utils import concat_box_prediction_layers
+from ....layers import smooth_l1_loss
+from ....layers import SigmoidFocalLoss
+from ....modeling.matcher import Matcher
+from ....structures.boxlist_ops import cat_boxlist
+from ....modeling.rpn.loss import RPNLossComputation
 
-from fcos_core.layers import smooth_l1_loss
-from fcos_core.layers import SigmoidFocalLoss
-from fcos_core.modeling.matcher import Matcher
-from fcos_core.modeling.utils import cat
-from fcos_core.structures.boxlist_ops import boxlist_iou
-from fcos_core.structures.boxlist_ops import cat_boxlist
-from fcos_core.modeling.rpn.loss import RPNLossComputation
 
 class RetinaNetLossComputation(RPNLossComputation):
     """
     This class computes the RetinaNet loss.
     """
 
-    def __init__(self, proposal_matcher, box_coder,
+    def __init__(self,
+                 proposal_matcher,
+                 box_coder,
                  generate_labels_func,
                  sigmoid_focal_loss,
                  bbox_reg_beta=0.11,
@@ -52,7 +52,9 @@ class RetinaNetLossComputation(RPNLossComputation):
             retinanet_cls_loss (Tensor)
             retinanet_regression_loss (Tensor
         """
-        anchors = [cat_boxlist(anchors_per_image) for anchors_per_image in anchors]
+        anchors = [
+            cat_boxlist(anchors_per_image) for anchors_per_image in anchors
+        ]
         labels, regression_targets = self.prepare_targets(anchors, targets)
 
         N = len(labels)
@@ -68,14 +70,13 @@ class RetinaNetLossComputation(RPNLossComputation):
             regression_targets[pos_inds],
             beta=self.bbox_reg_beta,
             size_average=False,
-        ) / (max(1, pos_inds.numel() * self.regress_norm))
+        ) / (max(1,
+                 pos_inds.numel() * self.regress_norm))
 
         labels = labels.int()
 
         retinanet_cls_loss = self.box_cls_loss_func(
-            box_cls,
-            labels
-        ) / (pos_inds.numel() + N)
+            box_cls, labels) / (pos_inds.numel() + N)
 
         return retinanet_cls_loss, retinanet_regression_loss
 
@@ -91,17 +92,15 @@ def make_retinanet_loss_evaluator(cfg, box_coder):
         cfg.MODEL.RETINANET.BG_IOU_THRESHOLD,
         allow_low_quality_matches=True,
     )
-    sigmoid_focal_loss = SigmoidFocalLoss(
-        cfg.MODEL.RETINANET.LOSS_GAMMA,
-        cfg.MODEL.RETINANET.LOSS_ALPHA
-    )
+    sigmoid_focal_loss = SigmoidFocalLoss(cfg.MODEL.RETINANET.LOSS_GAMMA,
+                                          cfg.MODEL.RETINANET.LOSS_ALPHA)
 
     loss_evaluator = RetinaNetLossComputation(
         matcher,
         box_coder,
         generate_retinanet_labels,
         sigmoid_focal_loss,
-        bbox_reg_beta = cfg.MODEL.RETINANET.BBOX_REG_BETA,
-        regress_norm = cfg.MODEL.RETINANET.BBOX_REG_WEIGHT,
+        bbox_reg_beta=cfg.MODEL.RETINANET.BBOX_REG_BETA,
+        regress_norm=cfg.MODEL.RETINANET.BBOX_REG_WEIGHT,
     )
     return loss_evaluator

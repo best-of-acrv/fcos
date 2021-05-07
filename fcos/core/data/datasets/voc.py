@@ -10,8 +10,7 @@ if sys.version_info[0] == 2:
 else:
     import xml.etree.ElementTree as ET
 
-
-from fcos_core.structures.bounding_box import BoxList
+from ...structures.bounding_box import BoxList
 
 
 class PascalVOCDataset(torch.utils.data.Dataset):
@@ -48,7 +47,8 @@ class PascalVOCDataset(torch.utils.data.Dataset):
 
         self._annopath = os.path.join(self.root, "Annotations", "%s.xml")
         self._imgpath = os.path.join(self.root, "JPEGImages", "%s.jpg")
-        self._imgsetpath = os.path.join(self.root, "ImageSets", "Main", "%s.txt")
+        self._imgsetpath = os.path.join(self.root, "ImageSets", "Main",
+                                        "%s.txt")
 
         with open(self._imgsetpath % self.image_set) as f:
             self.ids = f.readlines()
@@ -89,7 +89,7 @@ class PascalVOCDataset(torch.utils.data.Dataset):
         gt_classes = []
         difficult_boxes = []
         TO_REMOVE = 1
-        
+
         for obj in target.iter("object"):
             difficult = int(obj.find("difficult").text) == 1
             if not self.keep_difficult and difficult:
@@ -99,21 +99,20 @@ class PascalVOCDataset(torch.utils.data.Dataset):
             # Make pixel indexes 0-based
             # Refer to "https://github.com/rbgirshick/py-faster-rcnn/blob/master/lib/datasets/pascal_voc.py#L208-L211"
             box = [
-                bb.find("xmin").text, 
-                bb.find("ymin").text, 
-                bb.find("xmax").text, 
+                bb.find("xmin").text,
+                bb.find("ymin").text,
+                bb.find("xmax").text,
                 bb.find("ymax").text,
             ]
-            bndbox = tuple(
-                map(lambda x: x - TO_REMOVE, list(map(int, box)))
-            )
+            bndbox = tuple(map(lambda x: x - TO_REMOVE, list(map(int, box))))
 
             boxes.append(bndbox)
             gt_classes.append(self.class_to_ind[name])
             difficult_boxes.append(difficult)
 
         size = target.find("size")
-        im_info = tuple(map(int, (size.find("height").text, size.find("width").text)))
+        im_info = tuple(
+            map(int, (size.find("height").text, size.find("width").text)))
 
         res = {
             "boxes": torch.tensor(boxes, dtype=torch.float32),
@@ -127,7 +126,8 @@ class PascalVOCDataset(torch.utils.data.Dataset):
         img_id = self.ids[index]
         anno = ET.parse(self._annopath % img_id).getroot()
         size = anno.find("size")
-        im_info = tuple(map(int, (size.find("height").text, size.find("width").text)))
+        im_info = tuple(
+            map(int, (size.find("height").text, size.find("width").text)))
         return {"height": im_info[0], "width": im_info[1]}
 
     def map_class_id_to_class_name(self, class_id):

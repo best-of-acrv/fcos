@@ -10,10 +10,9 @@ from . import (
     fbnet_modeldef as modeldef,
 )
 import torch.nn as nn
-from fcos_core.modeling import registry
-from fcos_core.modeling.rpn import rpn
-from fcos_core.modeling import poolers
-
+from ...modeling import registry
+from ...modeling.rpn import rpn
+from ...modeling import poolers
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +32,7 @@ def create_builder(cfg):
             assert (
                 arch_def == modeldef.MODEL_ARCH[arch]
             ), "Two architectures with the same name {},\n{},\n{}".format(
-                arch, arch_def, modeldef.MODEL_ARCH[arch]
-            )
+                arch, arch_def, modeldef.MODEL_ARCH[arch])
         arch_def = modeldef.MODEL_ARCH[arch]
     else:
         assert arch_def is not None and len(arch_def) > 0
@@ -45,17 +43,14 @@ def create_builder(cfg):
         assert (
             cfg.MODEL.RPN.ANCHOR_STRIDE[0] == rpn_stride
         ), "Needs to set cfg.MODEL.RPN.ANCHOR_STRIDE to {}, got {}".format(
-            rpn_stride, cfg.MODEL.RPN.ANCHOR_STRIDE
-        )
+            rpn_stride, cfg.MODEL.RPN.ANCHOR_STRIDE)
     width_divisor = cfg.MODEL.FBNET.WIDTH_DIVISOR
     dw_skip_bn = cfg.MODEL.FBNET.DW_CONV_SKIP_BN
     dw_skip_relu = cfg.MODEL.FBNET.DW_CONV_SKIP_RELU
 
     logger.info(
         "Building fbnet model with arch {} (without scaling):\n{}".format(
-            arch, arch_def
-        )
-    )
+            arch, arch_def))
 
     builder = mbuilder.FBNetBuilder(
         width_ratio=factor,
@@ -77,8 +72,12 @@ def _get_trunk_cfg(arch_def):
 
 
 class FBNetTrunk(nn.Module):
+
     def __init__(
-        self, builder, arch_def, dim_in,
+        self,
+        builder,
+        arch_def,
+        dim_in,
     ):
         super(FBNetTrunk, self).__init__()
         self.first = builder.add_first(arch_def["first"], dim_in=dim_in)
@@ -111,16 +110,20 @@ def _get_rpn_stage(arch_def, num_blocks):
         logger.warn('Use last {} blocks in {} as rpn'.format(num_blocks, ret))
         block_count = len(ret["stages"])
         assert num_blocks <= block_count, "use block {}, block count {}".format(
-            num_blocks, block_count
-        )
+            num_blocks, block_count)
         blocks = range(block_count - num_blocks, block_count)
         ret = mbuilder.get_blocks(ret, block_indices=blocks)
     return ret["stages"]
 
 
 class FBNetRPNHead(nn.Module):
+
     def __init__(
-        self, cfg, in_channels, builder, arch_def,
+        self,
+        cfg,
+        in_channels,
+        builder,
+        arch_def,
     ):
         super(FBNetRPNHead, self).__init__()
         assert in_channels == builder.last_depth
@@ -149,8 +152,8 @@ def add_rpn_head(cfg, in_channels, num_anchors):
     # builder.name_prefix = "[rpn]"
 
     rpn_feature = FBNetRPNHead(cfg, in_channels, builder, model_arch)
-    rpn_regressor = rpn.RPNHeadConvRegressor(
-        cfg, rpn_feature.out_channels, num_anchors)
+    rpn_regressor = rpn.RPNHeadConvRegressor(cfg, rpn_feature.out_channels,
+                                             num_anchors)
     return nn.Sequential(rpn_feature, rpn_regressor)
 
 
@@ -159,7 +162,9 @@ def _get_head_stage(arch, head_name, blocks):
     if head_name not in arch:
         head_name = "head"
     head_stage = arch.get(head_name)
-    ret = mbuilder.get_blocks(arch, stage_indices=head_stage, block_indices=blocks)
+    ret = mbuilder.get_blocks(arch,
+                              stage_indices=head_stage,
+                              block_indices=blocks)
     return ret["stages"]
 
 
@@ -172,9 +177,17 @@ ARCH_CFG_NAME_MAPPING = {
 
 
 class FBNetROIHead(nn.Module):
+
     def __init__(
-        self, cfg, in_channels, builder, arch_def,
-        head_name, use_blocks, stride_init, last_layer_scale,
+        self,
+        cfg,
+        in_channels,
+        builder,
+        arch_def,
+        head_name,
+        use_blocks,
+        stride_init,
+        last_layer_scale,
     ):
         super(FBNetROIHead, self).__init__()
         assert in_channels == builder.last_depth
@@ -194,10 +207,8 @@ class FBNetROIHead(nn.Module):
         last_info[1] = last_layer_scale
         last = builder.add_last(last_info)
 
-        self.head = nn.Sequential(OrderedDict([
-            ("blocks", blocks),
-            ("last", last)
-        ]))
+        self.head = nn.Sequential(
+            OrderedDict([("blocks", blocks), ("last", last)]))
 
         self.out_channels = builder.last_depth
 
@@ -214,7 +225,10 @@ def add_roi_head(cfg, in_channels):
     # builder.name_prefix = "_[bbox]_"
 
     return FBNetROIHead(
-        cfg, in_channels, builder, model_arch,
+        cfg,
+        in_channels,
+        builder,
+        model_arch,
         head_name="bbox",
         use_blocks=cfg.MODEL.FBNET.DET_HEAD_BLOCKS,
         stride_init=cfg.MODEL.FBNET.DET_HEAD_STRIDE,
@@ -229,7 +243,10 @@ def add_roi_head_keypoints(cfg, in_channels):
     # builder.name_prefix = "_[kpts]_"
 
     return FBNetROIHead(
-        cfg, in_channels, builder, model_arch,
+        cfg,
+        in_channels,
+        builder,
+        model_arch,
         head_name="kpts",
         use_blocks=cfg.MODEL.FBNET.KPTS_HEAD_BLOCKS,
         stride_init=cfg.MODEL.FBNET.KPTS_HEAD_STRIDE,
@@ -244,7 +261,10 @@ def add_roi_head_mask(cfg, in_channels):
     # builder.name_prefix = "_[mask]_"
 
     return FBNetROIHead(
-        cfg, in_channels, builder, model_arch,
+        cfg,
+        in_channels,
+        builder,
+        model_arch,
         head_name="mask",
         use_blocks=cfg.MODEL.FBNET.MASK_HEAD_BLOCKS,
         stride_init=cfg.MODEL.FBNET.MASK_HEAD_STRIDE,

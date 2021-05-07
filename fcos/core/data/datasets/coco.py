@@ -2,10 +2,9 @@
 import torch
 import torchvision
 
-from fcos_core.structures.bounding_box import BoxList
-from fcos_core.structures.segmentation_mask import SegmentationMask
-from fcos_core.structures.keypoint import PersonKeypoints
-
+from ...structures.bounding_box import BoxList
+from ...structures.segmentation_mask import SegmentationMask
+from ...structures.keypoint import PersonKeypoints
 
 min_keypoints_per_image = 10
 
@@ -37,9 +36,12 @@ def has_valid_annotation(anno):
 
 
 class COCODataset(torchvision.datasets.coco.CocoDetection):
-    def __init__(
-        self, ann_file, root, remove_images_without_annotations, transforms=None
-    ):
+
+    def __init__(self,
+                 ann_file,
+                 root,
+                 remove_images_without_annotations,
+                 transforms=None):
         super(COCODataset, self).__init__(root, ann_file)
         # sort indices for reproducible results
         self.ids = sorted(self.ids)

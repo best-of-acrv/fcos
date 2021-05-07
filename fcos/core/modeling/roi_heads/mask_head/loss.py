@@ -2,10 +2,9 @@
 import torch
 from torch.nn import functional as F
 
-from fcos_core.layers import smooth_l1_loss
-from fcos_core.modeling.matcher import Matcher
-from fcos_core.structures.boxlist_ops import boxlist_iou
-from fcos_core.modeling.utils import cat
+from ....modeling.matcher import Matcher
+from ....structures.boxlist_ops import boxlist_iou
+from ....modeling.utils import cat
 
 
 def project_masks_on_boxes(segmentation_masks, proposals, discretization_size):
@@ -25,8 +24,7 @@ def project_masks_on_boxes(segmentation_masks, proposals, discretization_size):
     device = proposals.bbox.device
     proposals = proposals.convert("xyxy")
     assert segmentation_masks.size == proposals.size, "{}, {}".format(
-        segmentation_masks, proposals
-    )
+        segmentation_masks, proposals)
 
     # FIXME: CPU computation bottleneck, this should be parallelized
     proposals = proposals.bbox.to(torch.device("cpu"))
@@ -43,6 +41,7 @@ def project_masks_on_boxes(segmentation_masks, proposals, discretization_size):
 
 
 class MaskRCNNLossComputation(object):
+
     def __init__(self, proposal_matcher, discretization_size):
         """
         Arguments:
@@ -70,8 +69,7 @@ class MaskRCNNLossComputation(object):
         masks = []
         for proposals_per_image, targets_per_image in zip(proposals, targets):
             matched_targets = self.match_targets_to_proposals(
-                proposals_per_image, targets_per_image
-            )
+                proposals_per_image, targets_per_image)
             matched_idxs = matched_targets.get_field("matched_idxs")
 
             labels_per_image = matched_targets.get_field("labels")
@@ -90,9 +88,9 @@ class MaskRCNNLossComputation(object):
 
             positive_proposals = proposals_per_image[positive_inds]
 
-            masks_per_image = project_masks_on_boxes(
-                segmentation_masks, positive_proposals, self.discretization_size
-            )
+            masks_per_image = project_masks_on_boxes(segmentation_masks,
+                                                     positive_proposals,
+                                                     self.discretization_size)
 
             labels.append(labels_per_image)
             masks.append(masks_per_image)
@@ -123,8 +121,7 @@ class MaskRCNNLossComputation(object):
             return mask_logits.sum() * 0
 
         mask_loss = F.binary_cross_entropy_with_logits(
-            mask_logits[positive_inds, labels_pos], mask_targets
-        )
+            mask_logits[positive_inds, labels_pos], mask_targets)
         return mask_loss
 
 
@@ -136,7 +133,6 @@ def make_roi_mask_loss_evaluator(cfg):
     )
 
     loss_evaluator = MaskRCNNLossComputation(
-        matcher, cfg.MODEL.ROI_MASK_HEAD.RESOLUTION
-    )
+        matcher, cfg.MODEL.ROI_MASK_HEAD.RESOLUTION)
 
     return loss_evaluator

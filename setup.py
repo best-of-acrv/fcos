@@ -7,7 +7,8 @@ import torch.utils.cpp_extension as tcpp
 
 
 def get_extensions():
-    root = resource_filename('fcos', os.path.join('core', 'csrc'))
+    # root = resource_filename('fcos', os.path.join('core', 'csrc'))
+    root = os.path.join('fcos', 'core', 'csrc')
     is_cuda = ((torch.cuda.is_available() and tcpp.CUDA_HOME is not None) or
                os.getenv("FORCE_CUDA", "0") == "1")
 
@@ -51,7 +52,9 @@ setup(name='fcos',
       long_description=long_description,
       long_description_content_type='text/markdown',
       packages=find_packages(),
-      install_requires=['acrv_datasets'],
+      install_requires=[
+          'acrv_datasets', 'yacs', 'torch==1.4.*', 'torchvision==0.5.*'
+      ],
       ext_modules=get_extensions(),
       cmdclass={"build_ext": tcpp.BuildExtension},
       classifiers=(

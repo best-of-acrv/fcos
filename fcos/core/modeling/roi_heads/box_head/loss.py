@@ -2,14 +2,13 @@
 import torch
 from torch.nn import functional as F
 
-from fcos_core.layers import smooth_l1_loss
-from fcos_core.modeling.box_coder import BoxCoder
-from fcos_core.modeling.matcher import Matcher
-from fcos_core.structures.boxlist_ops import boxlist_iou
-from fcos_core.modeling.balanced_positive_negative_sampler import (
-    BalancedPositiveNegativeSampler
-)
-from fcos_core.modeling.utils import cat
+from ....layers import smooth_l1_loss
+from ....modeling.box_coder import BoxCoder
+from ....modeling.matcher import Matcher
+from ....structures.boxlist_ops import boxlist_iou
+from ....modeling.balanced_positive_negative_sampler import (
+    BalancedPositiveNegativeSampler)
+from ....modeling.utils import cat
 
 
 class FastRCNNLossComputation(object):
@@ -18,13 +17,11 @@ class FastRCNNLossComputation(object):
     Also supports FPN
     """
 
-    def __init__(
-        self, 
-        proposal_matcher, 
-        fg_bg_sampler, 
-        box_coder, 
-        cls_agnostic_bbox_reg=False
-    ):
+    def __init__(self,
+                 proposal_matcher,
+                 fg_bg_sampler,
+                 box_coder,
+                 cls_agnostic_bbox_reg=False):
         """
         Arguments:
             proposal_matcher (Matcher)
@@ -54,8 +51,7 @@ class FastRCNNLossComputation(object):
         regression_targets = []
         for proposals_per_image, targets_per_image in zip(proposals, targets):
             matched_targets = self.match_targets_to_proposals(
-                proposals_per_image, targets_per_image
-            )
+                proposals_per_image, targets_per_image)
             matched_idxs = matched_targets.get_field("matched_idxs")
 
             labels_per_image = matched_targets.get_field("labels")
@@ -71,8 +67,7 @@ class FastRCNNLossComputation(object):
 
             # compute regression targets
             regression_targets_per_image = self.box_coder.encode(
-                matched_targets.bbox, proposals_per_image.bbox
-            )
+                matched_targets.bbox, proposals_per_image.bbox)
 
             labels.append(labels_per_image)
             regression_targets.append(regression_targets_per_image)
@@ -96,19 +91,17 @@ class FastRCNNLossComputation(object):
         proposals = list(proposals)
         # add corresponding label and regression_targets information to the bounding boxes
         for labels_per_image, regression_targets_per_image, proposals_per_image in zip(
-            labels, regression_targets, proposals
-        ):
+                labels, regression_targets, proposals):
             proposals_per_image.add_field("labels", labels_per_image)
-            proposals_per_image.add_field(
-                "regression_targets", regression_targets_per_image
-            )
+            proposals_per_image.add_field("regression_targets",
+                                          regression_targets_per_image)
 
         # distributed sampled proposals, that were obtained on all feature maps
         # concatenated via the fg_bg_sampler, into individual feature map levels
         for img_idx, (pos_inds_img, neg_inds_img) in enumerate(
-            zip(sampled_pos_inds, sampled_neg_inds)
-        ):
-            img_sampled_inds = torch.nonzero(pos_inds_img | neg_inds_img).squeeze(1)
+                zip(sampled_pos_inds, sampled_neg_inds)):
+            img_sampled_inds = torch.nonzero(pos_inds_img |
+                                             neg_inds_img).squeeze(1)
             proposals_per_image = proposals[img_idx][img_sampled_inds]
             proposals[img_idx] = proposals_per_image
 
@@ -138,10 +131,12 @@ class FastRCNNLossComputation(object):
 
         proposals = self._proposals
 
-        labels = cat([proposal.get_field("labels") for proposal in proposals], dim=0)
-        regression_targets = cat(
-            [proposal.get_field("regression_targets") for proposal in proposals], dim=0
-        )
+        labels = cat([proposal.get_field("labels") for proposal in proposals],
+                     dim=0)
+        regression_targets = cat([
+            proposal.get_field("regression_targets") for proposal in proposals
+        ],
+                                 dim=0)
 
         classification_loss = F.cross_entropy(class_logits, labels)
 
@@ -153,8 +148,8 @@ class FastRCNNLossComputation(object):
         if self.cls_agnostic_bbox_reg:
             map_inds = torch.tensor([4, 5, 6, 7], device=device)
         else:
-            map_inds = 4 * labels_pos[:, None] + torch.tensor(
-                [0, 1, 2, 3], device=device)
+            map_inds = 4 * labels_pos[:, None] + torch.tensor([0, 1, 2, 3],
+                                                              device=device)
 
         box_loss = smooth_l1_loss(
             box_regression[sampled_pos_inds_subset[:, None], map_inds],
@@ -178,16 +173,12 @@ def make_roi_box_loss_evaluator(cfg):
     box_coder = BoxCoder(weights=bbox_reg_weights)
 
     fg_bg_sampler = BalancedPositiveNegativeSampler(
-        cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE, cfg.MODEL.ROI_HEADS.POSITIVE_FRACTION
-    )
+        cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE,
+        cfg.MODEL.ROI_HEADS.POSITIVE_FRACTION)
 
     cls_agnostic_bbox_reg = cfg.MODEL.CLS_AGNOSTIC_BBOX_REG
 
-    loss_evaluator = FastRCNNLossComputation(
-        matcher, 
-        fg_bg_sampler, 
-        box_coder, 
-        cls_agnostic_bbox_reg
-    )
+    loss_evaluator = FastRCNNLossComputation(matcher, fg_bg_sampler, box_coder,
+                                             cls_agnostic_bbox_reg)
 
     return loss_evaluator

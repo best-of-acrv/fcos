@@ -1,10 +1,12 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
-from fcos_core.modeling import registry
 from torch import nn
+
+from ....modeling import registry
 
 
 @registry.ROI_BOX_PREDICTOR.register("FastRCNNPredictor")
 class FastRCNNPredictor(nn.Module):
+
     def __init__(self, config, in_channels):
         super(FastRCNNPredictor, self).__init__()
         assert in_channels is not None
@@ -33,6 +35,7 @@ class FastRCNNPredictor(nn.Module):
 
 @registry.ROI_BOX_PREDICTOR.register("FPNPredictor")
 class FPNPredictor(nn.Module):
+
     def __init__(self, cfg, in_channels):
         super(FPNPredictor, self).__init__()
         num_classes = cfg.MODEL.ROI_BOX_HEAD.NUM_CLASSES
@@ -40,7 +43,8 @@ class FPNPredictor(nn.Module):
 
         self.cls_score = nn.Linear(representation_size, num_classes)
         num_bbox_reg_classes = 2 if cfg.MODEL.CLS_AGNOSTIC_BBOX_REG else num_classes
-        self.bbox_pred = nn.Linear(representation_size, num_bbox_reg_classes * 4)
+        self.bbox_pred = nn.Linear(representation_size,
+                                   num_bbox_reg_classes * 4)
 
         nn.init.normal_(self.cls_score.weight, std=0.01)
         nn.init.normal_(self.bbox_pred.weight, std=0.001)

@@ -1,24 +1,19 @@
 import torch
 from torch.nn import functional as F
 
-from fcos_core.modeling.matcher import Matcher
-
-from fcos_core.modeling.balanced_positive_negative_sampler import (
-    BalancedPositiveNegativeSampler,
-)
-from fcos_core.structures.boxlist_ops import boxlist_iou
-from fcos_core.modeling.utils import cat
-from fcos_core.layers import smooth_l1_loss
-from fcos_core.structures.boxlist_ops import cat_boxlist
-
-from fcos_core.structures.keypoint import keypoints_to_heat_map
+from ....modeling.matcher import Matcher
+from ....modeling.balanced_positive_negative_sampler import (
+    BalancedPositiveNegativeSampler,)
+from ....structures.boxlist_ops import boxlist_iou
+from ....modeling.utils import cat
+from ....structures.boxlist_ops import cat_boxlist
+from ....structures.keypoint import keypoints_to_heat_map
 
 
 def project_keypoints_to_heatmap(keypoints, proposals, discretization_size):
     proposals = proposals.convert("xyxy")
-    return keypoints_to_heat_map(
-        keypoints.keypoints, proposals.bbox, discretization_size
-    )
+    return keypoints_to_heat_map(keypoints.keypoints, proposals.bbox,
+                                 discretization_size)
 
 
 def cat_boxlist_with_keypoints(boxlists):
@@ -42,16 +37,15 @@ def _within_box(points, boxes):
     boxes: Nx4
     output: NxK
     """
-    x_within = (points[..., 0] >= boxes[:, 0, None]) & (
-        points[..., 0] <= boxes[:, 2, None]
-    )
-    y_within = (points[..., 1] >= boxes[:, 1, None]) & (
-        points[..., 1] <= boxes[:, 3, None]
-    )
+    x_within = (points[..., 0] >= boxes[:, 0, None]) & (points[..., 0] <=
+                                                        boxes[:, 2, None])
+    y_within = (points[..., 1] >= boxes[:, 1, None]) & (points[..., 1] <=
+                                                        boxes[:, 3, None])
     return x_within & y_within
 
 
 class KeypointRCNNLossComputation(object):
+
     def __init__(self, proposal_matcher, fg_bg_sampler, discretization_size):
         """
         Arguments:
@@ -81,8 +75,7 @@ class KeypointRCNNLossComputation(object):
         keypoints = []
         for proposals_per_image, targets_per_image in zip(proposals, targets):
             matched_targets = self.match_targets_to_proposals(
-                proposals_per_image, targets_per_image
-            )
+                proposals_per_image, targets_per_image)
             matched_idxs = matched_targets.get_field("matched_idxs")
 
             labels_per_image = matched_targets.get_field("labels")
@@ -95,9 +88,8 @@ class KeypointRCNNLossComputation(object):
             labels_per_image[neg_inds] = 0
 
             keypoints_per_image = matched_targets.get_field("keypoints")
-            within_box = _within_box(
-                keypoints_per_image.keypoints, matched_targets.bbox
-            )
+            within_box = _within_box(keypoints_per_image.keypoints,
+                                     matched_targets.bbox)
             vis_kp = keypoints_per_image.keypoints[..., 2] > 0
             is_visible = (within_box & vis_kp).sum(1) > 0
 
@@ -125,16 +117,14 @@ class KeypointRCNNLossComputation(object):
         proposals = list(proposals)
         # add corresponding label and regression_targets information to the bounding boxes
         for labels_per_image, keypoints_per_image, proposals_per_image in zip(
-            labels, keypoints, proposals
-        ):
+                labels, keypoints, proposals):
             proposals_per_image.add_field("labels", labels_per_image)
             proposals_per_image.add_field("keypoints", keypoints_per_image)
 
         # distributed sampled proposals, that were obtained on all feature maps
         # concatenated via the fg_bg_sampler, into individual feature map levels
         for img_idx, (pos_inds_img, neg_inds_img) in enumerate(
-            zip(sampled_pos_inds, sampled_neg_inds)
-        ):
+                zip(sampled_pos_inds, sampled_neg_inds)):
             img_sampled_inds = torch.nonzero(pos_inds_img).squeeze(1)
             proposals_per_image = proposals[img_idx][img_sampled_inds]
             proposals[img_idx] = proposals_per_image
@@ -148,8 +138,7 @@ class KeypointRCNNLossComputation(object):
         for proposals_per_image in proposals:
             kp = proposals_per_image.get_field("keypoints")
             heatmaps_per_image, valid_per_image = project_keypoints_to_heatmap(
-                kp, proposals_per_image, self.discretization_size
-            )
+                kp, proposals_per_image, self.discretization_size)
             heatmaps.append(heatmaps_per_image.view(-1))
             valid.append(valid_per_image.view(-1))
 
@@ -165,7 +154,8 @@ class KeypointRCNNLossComputation(object):
         N, K, H, W = keypoint_logits.shape
         keypoint_logits = keypoint_logits.view(N * K, H * W)
 
-        keypoint_loss = F.cross_entropy(keypoint_logits[valid], keypoint_targets[valid])
+        keypoint_loss = F.cross_entropy(keypoint_logits[valid],
+                                        keypoint_targets[valid])
         return keypoint_loss
 
 
@@ -176,8 +166,9 @@ def make_roi_keypoint_loss_evaluator(cfg):
         allow_low_quality_matches=False,
     )
     fg_bg_sampler = BalancedPositiveNegativeSampler(
-        cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE, cfg.MODEL.ROI_HEADS.POSITIVE_FRACTION
-    )
+        cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE,
+        cfg.MODEL.ROI_HEADS.POSITIVE_FRACTION)
     resolution = cfg.MODEL.ROI_KEYPOINT_HEAD.RESOLUTION
-    loss_evaluator = KeypointRCNNLossComputation(matcher, fg_bg_sampler, resolution)
+    loss_evaluator = KeypointRCNNLossComputation(matcher, fg_bg_sampler,
+                                                 resolution)
     return loss_evaluator

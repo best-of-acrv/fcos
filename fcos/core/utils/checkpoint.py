@@ -4,13 +4,14 @@ import os
 
 import torch
 
-from fcos_core.utils.model_serialization import load_state_dict
-from fcos_core.utils.c2_model_loading import load_c2_format
-from fcos_core.utils.imports import import_file
-from fcos_core.utils.model_zoo import cache_url
+from ..utils.model_serialization import load_state_dict
+from ..utils.c2_model_loading import load_c2_format
+from ..utils.imports import import_file
+from ..utils.model_zoo import cache_url
 
 
 class Checkpointer(object):
+
     def __init__(
         self,
         model,
@@ -55,7 +56,8 @@ class Checkpointer(object):
             f = self.get_checkpoint_file()
         if not f:
             # no checkpoint could be found
-            self.logger.info("No checkpoint found. Initializing model from scratch")
+            self.logger.info(
+                "No checkpoint found. Initializing model from scratch")
             return {}
         self.logger.info("Loading checkpoint from {}".format(f))
         checkpoint = self._load_file(f)
@@ -99,6 +101,7 @@ class Checkpointer(object):
 
 
 class DetectronCheckpointer(Checkpointer):
+
     def __init__(
         self,
         cfg,
@@ -109,18 +112,17 @@ class DetectronCheckpointer(Checkpointer):
         save_to_disk=None,
         logger=None,
     ):
-        super(DetectronCheckpointer, self).__init__(
-            model, optimizer, scheduler, save_dir, save_to_disk, logger
-        )
+        super(DetectronCheckpointer,
+              self).__init__(model, optimizer, scheduler, save_dir,
+                             save_to_disk, logger)
         self.cfg = cfg.clone()
 
     def _load_file(self, f):
         # catalog lookup
         if f.startswith("catalog://"):
-            paths_catalog = import_file(
-                "fcos_core.config.paths_catalog", self.cfg.PATHS_CATALOG, True
-            )
-            catalog_f = paths_catalog.ModelCatalog.get(f[len("catalog://") :])
+            paths_catalog = import_file("fcos_core.config.paths_catalog",
+                                        self.cfg.PATHS_CATALOG, True)
+            catalog_f = paths_catalog.ModelCatalog.get(f[len("catalog://"):])
             self.logger.info("{} points to {}".format(f, catalog_f))
             f = catalog_f
         # download url files

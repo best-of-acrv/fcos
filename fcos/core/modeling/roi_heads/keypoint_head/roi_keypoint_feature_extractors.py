@@ -1,14 +1,15 @@
 from torch import nn
 from torch.nn import functional as F
 
-from fcos_core.modeling import registry
-from fcos_core.modeling.poolers import Pooler
+from ....modeling import registry
+from ....modeling.poolers import Pooler
+from ....layers import Conv2d
 
-from fcos_core.layers import Conv2d
 
-
-@registry.ROI_KEYPOINT_FEATURE_EXTRACTORS.register("KeypointRCNNFeatureExtractor")
+@registry.ROI_KEYPOINT_FEATURE_EXTRACTORS.register(
+    "KeypointRCNNFeatureExtractor")
 class KeypointRCNNFeatureExtractor(nn.Module):
+
     def __init__(self, cfg, in_channels):
         super(KeypointRCNNFeatureExtractor, self).__init__()
 
@@ -28,8 +29,14 @@ class KeypointRCNNFeatureExtractor(nn.Module):
         self.blocks = []
         for layer_idx, layer_features in enumerate(layers, 1):
             layer_name = "conv_fcn{}".format(layer_idx)
-            module = Conv2d(next_feature, layer_features, 3, stride=1, padding=1)
-            nn.init.kaiming_normal_(module.weight, mode="fan_out", nonlinearity="relu")
+            module = Conv2d(next_feature,
+                            layer_features,
+                            3,
+                            stride=1,
+                            padding=1)
+            nn.init.kaiming_normal_(module.weight,
+                                    mode="fan_out",
+                                    nonlinearity="relu")
             nn.init.constant_(module.bias, 0)
             self.add_module(layer_name, module)
             next_feature = layer_features
@@ -45,6 +52,5 @@ class KeypointRCNNFeatureExtractor(nn.Module):
 
 def make_roi_keypoint_feature_extractor(cfg, in_channels):
     func = registry.ROI_KEYPOINT_FEATURE_EXTRACTORS[
-        cfg.MODEL.ROI_KEYPOINT_HEAD.FEATURE_EXTRACTOR
-    ]
+        cfg.MODEL.ROI_KEYPOINT_HEAD.FEATURE_EXTRACTOR]
     return func(cfg, in_channels)

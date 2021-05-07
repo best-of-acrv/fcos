@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from fcos_core.structures.bounding_box import BoxList
+from ...structures.bounding_box import BoxList
 
 
 class BufferList(nn.Module):
@@ -38,11 +38,11 @@ class AnchorGenerator(nn.Module):
     """
 
     def __init__(
-        self,
-        sizes=(128, 256, 512),
-        aspect_ratios=(0.5, 1.0, 2.0),
-        anchor_strides=(8, 16, 32),
-        straddle_thresh=0,
+            self,
+            sizes=(128, 256, 512),
+            aspect_ratios=(0.5, 1.0, 2.0),
+            anchor_strides=(8, 16, 32),
+            straddle_thresh=0,
     ):
         super(AnchorGenerator, self).__init__()
 
@@ -57,10 +57,8 @@ class AnchorGenerator(nn.Module):
 
             cell_anchors = [
                 generate_anchors(
-                    anchor_stride,
-                    size if isinstance(size, (tuple, list)) else (size,),
-                    aspect_ratios
-                ).float()
+                    anchor_stride, size if isinstance(size, (tuple, list)) else
+                    (size,), aspect_ratios).float()
                 for anchor_stride, size in zip(anchor_strides, sizes)
             ]
         self.strides = anchor_strides
@@ -72,25 +70,28 @@ class AnchorGenerator(nn.Module):
 
     def grid_anchors(self, grid_sizes):
         anchors = []
-        for size, stride, base_anchors in zip(
-            grid_sizes, self.strides, self.cell_anchors
-        ):
+        for size, stride, base_anchors in zip(grid_sizes, self.strides,
+                                              self.cell_anchors):
             grid_height, grid_width = size
             device = base_anchors.device
-            shifts_x = torch.arange(
-                0, grid_width * stride, step=stride, dtype=torch.float32, device=device
-            )
-            shifts_y = torch.arange(
-                0, grid_height * stride, step=stride, dtype=torch.float32, device=device
-            )
+            shifts_x = torch.arange(0,
+                                    grid_width * stride,
+                                    step=stride,
+                                    dtype=torch.float32,
+                                    device=device)
+            shifts_y = torch.arange(0,
+                                    grid_height * stride,
+                                    step=stride,
+                                    dtype=torch.float32,
+                                    device=device)
             shift_y, shift_x = torch.meshgrid(shifts_y, shifts_x)
             shift_x = shift_x.reshape(-1)
             shift_y = shift_y.reshape(-1)
             shifts = torch.stack((shift_x, shift_y, shift_x, shift_y), dim=1)
 
             anchors.append(
-                (shifts.view(-1, 1, 4) + base_anchors.view(1, -1, 4)).reshape(-1, 4)
-            )
+                (shifts.view(-1, 1, 4) + base_anchors.view(1, -1, 4)).reshape(
+                    -1, 4))
 
         return anchors
 
@@ -99,26 +100,28 @@ class AnchorGenerator(nn.Module):
         anchors = boxlist.bbox
         if self.straddle_thresh >= 0:
             inds_inside = (
-                (anchors[..., 0] >= -self.straddle_thresh)
-                & (anchors[..., 1] >= -self.straddle_thresh)
-                & (anchors[..., 2] < image_width + self.straddle_thresh)
-                & (anchors[..., 3] < image_height + self.straddle_thresh)
-            )
+                (anchors[..., 0] >= -self.straddle_thresh) &
+                (anchors[..., 1] >= -self.straddle_thresh) &
+                (anchors[..., 2] < image_width + self.straddle_thresh) &
+                (anchors[..., 3] < image_height + self.straddle_thresh))
         else:
             device = anchors.device
-            inds_inside = torch.ones(anchors.shape[0], dtype=torch.uint8, device=device)
+            inds_inside = torch.ones(anchors.shape[0],
+                                     dtype=torch.uint8,
+                                     device=device)
         boxlist.add_field("visibility", inds_inside)
 
     def forward(self, image_list, feature_maps):
         grid_sizes = [feature_map.shape[-2:] for feature_map in feature_maps]
         anchors_over_all_feature_maps = self.grid_anchors(grid_sizes)
         anchors = []
-        for i, (image_height, image_width) in enumerate(image_list.image_sizes):
+        for i, (image_height,
+                image_width) in enumerate(image_list.image_sizes):
             anchors_in_image = []
             for anchors_per_feature_map in anchors_over_all_feature_maps:
-                boxlist = BoxList(
-                    anchors_per_feature_map, (image_width, image_height), mode="xyxy"
-                )
+                boxlist = BoxList(anchors_per_feature_map,
+                                  (image_width, image_height),
+                                  mode="xyxy")
                 self.add_visibility_to(boxlist)
                 anchors_in_image.append(boxlist)
             anchors.append(anchors_in_image)
@@ -136,10 +139,10 @@ def make_anchor_generator(config):
             anchor_sizes
         ), "FPN should have len(ANCHOR_STRIDE) == len(ANCHOR_SIZES)"
     else:
-        assert len(anchor_stride) == 1, "Non-FPN should have a single ANCHOR_STRIDE"
-    anchor_generator = AnchorGenerator(
-        anchor_sizes, aspect_ratios, anchor_stride, straddle_thresh
-    )
+        assert len(
+            anchor_stride) == 1, "Non-FPN should have a single ANCHOR_STRIDE"
+    anchor_generator = AnchorGenerator(anchor_sizes, aspect_ratios,
+                                       anchor_stride, straddle_thresh)
     return anchor_generator
 
 
@@ -156,14 +159,15 @@ def make_anchor_generator_retinanet(config):
     for size in anchor_sizes:
         per_layer_anchor_sizes = []
         for scale_per_octave in range(scales_per_octave):
-            octave_scale = octave ** (scale_per_octave / float(scales_per_octave))
+            octave_scale = octave**(scale_per_octave /
+                                    float(scales_per_octave))
             per_layer_anchor_sizes.append(octave_scale * size)
         new_anchor_sizes.append(tuple(per_layer_anchor_sizes))
 
-    anchor_generator = AnchorGenerator(
-        tuple(new_anchor_sizes), aspect_ratios, anchor_strides, straddle_thresh
-    )
+    anchor_generator = AnchorGenerator(tuple(new_anchor_sizes), aspect_ratios,
+                                       anchor_strides, straddle_thresh)
     return anchor_generator
+
 
 # Copyright (c) 2017-present, Facebook, Inc.
 #
@@ -187,7 +191,6 @@ def make_anchor_generator_retinanet(config):
 # Licensed under The MIT License [see LICENSE for details]
 # Written by Ross Girshick and Sean Bell
 # --------------------------------------------------------
-
 
 # Verify that we compute the same anchors as Shaoqing's matlab implementation:
 #
@@ -217,9 +220,9 @@ def make_anchor_generator_retinanet(config):
 #        [-167., -343.,  184.,  360.]])
 
 
-def generate_anchors(
-    stride=16, sizes=(32, 64, 128, 256, 512), aspect_ratios=(0.5, 1, 2)
-):
+def generate_anchors(stride=16,
+                     sizes=(32, 64, 128, 256, 512),
+                     aspect_ratios=(0.5, 1, 2)):
     """Generates a matrix of anchor boxes in (x1, y1, x2, y2) format. Anchors
     are centered on stride / 2, have (approximate) sqrt areas of the specified
     sizes, and aspect ratios as given.
@@ -238,8 +241,7 @@ def _generate_anchors(base_size, scales, aspect_ratios):
     anchor = np.array([1, 1, base_size, base_size], dtype=np.float) - 1
     anchors = _ratio_enum(anchor, aspect_ratios)
     anchors = np.vstack(
-        [_scale_enum(anchors[i, :], scales) for i in range(anchors.shape[0])]
-    )
+        [_scale_enum(anchors[i, :], scales) for i in range(anchors.shape[0])])
     return torch.from_numpy(anchors)
 
 
@@ -258,14 +260,12 @@ def _mkanchors(ws, hs, x_ctr, y_ctr):
     """
     ws = ws[:, np.newaxis]
     hs = hs[:, np.newaxis]
-    anchors = np.hstack(
-        (
-            x_ctr - 0.5 * (ws - 1),
-            y_ctr - 0.5 * (hs - 1),
-            x_ctr + 0.5 * (ws - 1),
-            y_ctr + 0.5 * (hs - 1),
-        )
-    )
+    anchors = np.hstack((
+        x_ctr - 0.5 * (ws - 1),
+        y_ctr - 0.5 * (hs - 1),
+        x_ctr + 0.5 * (ws - 1),
+        y_ctr + 0.5 * (hs - 1),
+    ))
     return anchors
 
 

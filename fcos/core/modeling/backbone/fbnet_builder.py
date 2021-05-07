@@ -11,14 +11,13 @@ from collections import OrderedDict
 
 import torch
 import torch.nn as nn
-from fcos_core.layers import (
+from ...layers import (
     BatchNorm2d,
     Conv2d,
     FrozenBatchNorm2d,
     interpolate,
 )
-from fcos_core.layers.misc import _NewEmptyTensorOp
-
+from ...layers.misc import _NewEmptyTensorOp
 
 logger = logging.getLogger(__name__)
 
@@ -35,180 +34,211 @@ def _get_divisible_by(num, divisible_by, min_val):
 
 
 PRIMITIVES = {
-    "skip": lambda C_in, C_out, expansion, stride, **kwargs: Identity(
-        C_in, C_out, stride
-    ),
-    "ir_k3": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, expansion, stride, **kwargs
-    ),
-    "ir_k5": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, expansion, stride, kernel=5, **kwargs
-    ),
-    "ir_k7": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, expansion, stride, kernel=7, **kwargs
-    ),
-    "ir_k1": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, expansion, stride, kernel=1, **kwargs
-    ),
-    "shuffle": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, expansion, stride, shuffle_type="mid", pw_group=4, **kwargs
-    ),
-    "basic_block": lambda C_in, C_out, expansion, stride, **kwargs: CascadeConv3x3(
-        C_in, C_out, stride
-    ),
-    "shift_5x5": lambda C_in, C_out, expansion, stride, **kwargs: ShiftBlock5x5(
-        C_in, C_out, expansion, stride
-    ),
+    "skip":
+        lambda C_in, C_out, expansion, stride, **kwargs: Identity(
+            C_in, C_out, stride),
+    "ir_k3":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, expansion, stride, **kwargs),
+    "ir_k5":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, expansion, stride, kernel=5, **kwargs),
+    "ir_k7":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, expansion, stride, kernel=7, **kwargs),
+    "ir_k1":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, expansion, stride, kernel=1, **kwargs),
+    "shuffle":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(C_in,
+                                                                  C_out,
+                                                                  expansion,
+                                                                  stride,
+                                                                  shuffle_type=
+                                                                  "mid",
+                                                                  pw_group=4,
+                                                                  **kwargs),
+    "basic_block":
+        lambda C_in, C_out, expansion, stride, **kwargs: CascadeConv3x3(
+            C_in, C_out, stride),
+    "shift_5x5":
+        lambda C_in, C_out, expansion, stride, **kwargs: ShiftBlock5x5(
+            C_in, C_out, expansion, stride),
     # layer search 2
-    "ir_k3_e1": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 1, stride, kernel=3, **kwargs
-    ),
-    "ir_k3_e3": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 3, stride, kernel=3, **kwargs
-    ),
-    "ir_k3_e6": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 6, stride, kernel=3, **kwargs
-    ),
-    "ir_k3_s4": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 4, stride, kernel=3, shuffle_type="mid", pw_group=4, **kwargs
-    ),
-    "ir_k5_e1": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 1, stride, kernel=5, **kwargs
-    ),
-    "ir_k5_e3": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 3, stride, kernel=5, **kwargs
-    ),
-    "ir_k5_e6": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 6, stride, kernel=5, **kwargs
-    ),
-    "ir_k5_s4": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 4, stride, kernel=5, shuffle_type="mid", pw_group=4, **kwargs
-    ),
+    "ir_k3_e1":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 1, stride, kernel=3, **kwargs),
+    "ir_k3_e3":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 3, stride, kernel=3, **kwargs),
+    "ir_k3_e6":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 6, stride, kernel=3, **kwargs),
+    "ir_k3_s4":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(C_in,
+                                                                  C_out,
+                                                                  4,
+                                                                  stride,
+                                                                  kernel=3,
+                                                                  shuffle_type=
+                                                                  "mid",
+                                                                  pw_group=4,
+                                                                  **kwargs),
+    "ir_k5_e1":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 1, stride, kernel=5, **kwargs),
+    "ir_k5_e3":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 3, stride, kernel=5, **kwargs),
+    "ir_k5_e6":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 6, stride, kernel=5, **kwargs),
+    "ir_k5_s4":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(C_in,
+                                                                  C_out,
+                                                                  4,
+                                                                  stride,
+                                                                  kernel=5,
+                                                                  shuffle_type=
+                                                                  "mid",
+                                                                  pw_group=4,
+                                                                  **kwargs),
     # layer search se
-    "ir_k3_e1_se": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 1, stride, kernel=3, se=True, **kwargs
-    ),
-    "ir_k3_e3_se": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 3, stride, kernel=3, se=True, **kwargs
-    ),
-    "ir_k3_e6_se": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 6, stride, kernel=3, se=True, **kwargs
-    ),
-    "ir_k3_s4_se": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in,
-        C_out,
-        4,
-        stride,
-        kernel=3,
-        shuffle_type="mid",
-        pw_group=4,
-        se=True,
-        **kwargs
-    ),
-    "ir_k5_e1_se": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 1, stride, kernel=5, se=True, **kwargs
-    ),
-    "ir_k5_e3_se": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 3, stride, kernel=5, se=True, **kwargs
-    ),
-    "ir_k5_e6_se": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 6, stride, kernel=5, se=True, **kwargs
-    ),
-    "ir_k5_s4_se": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in,
-        C_out,
-        4,
-        stride,
-        kernel=5,
-        shuffle_type="mid",
-        pw_group=4,
-        se=True,
-        **kwargs
-    ),
+    "ir_k3_e1_se":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 1, stride, kernel=3, se=True, **kwargs),
+    "ir_k3_e3_se":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 3, stride, kernel=3, se=True, **kwargs),
+    "ir_k3_e6_se":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 6, stride, kernel=3, se=True, **kwargs),
+    "ir_k3_s4_se":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(C_in,
+                                                                  C_out,
+                                                                  4,
+                                                                  stride,
+                                                                  kernel=3,
+                                                                  shuffle_type=
+                                                                  "mid",
+                                                                  pw_group=4,
+                                                                  se=True,
+                                                                  **kwargs),
+    "ir_k5_e1_se":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 1, stride, kernel=5, se=True, **kwargs),
+    "ir_k5_e3_se":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 3, stride, kernel=5, se=True, **kwargs),
+    "ir_k5_e6_se":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 6, stride, kernel=5, se=True, **kwargs),
+    "ir_k5_s4_se":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(C_in,
+                                                                  C_out,
+                                                                  4,
+                                                                  stride,
+                                                                  kernel=5,
+                                                                  shuffle_type=
+                                                                  "mid",
+                                                                  pw_group=4,
+                                                                  se=True,
+                                                                  **kwargs),
     # layer search 3 (in addition to layer search 2)
-    "ir_k3_s2": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 1, stride, kernel=3, shuffle_type="mid", pw_group=2, **kwargs
-    ),
-    "ir_k5_s2": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 1, stride, kernel=5, shuffle_type="mid", pw_group=2, **kwargs
-    ),
-    "ir_k3_s2_se": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in,
-        C_out,
-        1,
-        stride,
-        kernel=3,
-        shuffle_type="mid",
-        pw_group=2,
-        se=True,
-        **kwargs
-    ),
-    "ir_k5_s2_se": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in,
-        C_out,
-        1,
-        stride,
-        kernel=5,
-        shuffle_type="mid",
-        pw_group=2,
-        se=True,
-        **kwargs
-    ),
+    "ir_k3_s2":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(C_in,
+                                                                  C_out,
+                                                                  1,
+                                                                  stride,
+                                                                  kernel=3,
+                                                                  shuffle_type=
+                                                                  "mid",
+                                                                  pw_group=2,
+                                                                  **kwargs),
+    "ir_k5_s2":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(C_in,
+                                                                  C_out,
+                                                                  1,
+                                                                  stride,
+                                                                  kernel=5,
+                                                                  shuffle_type=
+                                                                  "mid",
+                                                                  pw_group=2,
+                                                                  **kwargs),
+    "ir_k3_s2_se":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(C_in,
+                                                                  C_out,
+                                                                  1,
+                                                                  stride,
+                                                                  kernel=3,
+                                                                  shuffle_type=
+                                                                  "mid",
+                                                                  pw_group=2,
+                                                                  se=True,
+                                                                  **kwargs),
+    "ir_k5_s2_se":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(C_in,
+                                                                  C_out,
+                                                                  1,
+                                                                  stride,
+                                                                  kernel=5,
+                                                                  shuffle_type=
+                                                                  "mid",
+                                                                  pw_group=2,
+                                                                  se=True,
+                                                                  **kwargs),
     # layer search 4 (in addition to layer search 3)
-    "ir_k3_sep": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, expansion, stride, kernel=3, cdw=True, **kwargs
-    ),
-    "ir_k33_e1": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 1, stride, kernel=3, cdw=True, **kwargs
-    ),
-    "ir_k33_e3": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 3, stride, kernel=3, cdw=True, **kwargs
-    ),
-    "ir_k33_e6": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 6, stride, kernel=3, cdw=True, **kwargs
-    ),
+    "ir_k3_sep":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, expansion, stride, kernel=3, cdw=True, **kwargs),
+    "ir_k33_e1":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 1, stride, kernel=3, cdw=True, **kwargs),
+    "ir_k33_e3":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 3, stride, kernel=3, cdw=True, **kwargs),
+    "ir_k33_e6":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 6, stride, kernel=3, cdw=True, **kwargs),
     # layer search 5 (in addition to layer search 4)
-    "ir_k7_e1": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 1, stride, kernel=7, **kwargs
-    ),
-    "ir_k7_e3": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 3, stride, kernel=7, **kwargs
-    ),
-    "ir_k7_e6": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 6, stride, kernel=7, **kwargs
-    ),
-    "ir_k7_sep": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, expansion, stride, kernel=7, cdw=True, **kwargs
-    ),
-    "ir_k7_sep_e1": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 1, stride, kernel=7, cdw=True, **kwargs
-    ),
-    "ir_k7_sep_e3": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 3, stride, kernel=7, cdw=True, **kwargs
-    ),
-    "ir_k7_sep_e6": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
-        C_in, C_out, 6, stride, kernel=7, cdw=True, **kwargs
-    ),
+    "ir_k7_e1":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 1, stride, kernel=7, **kwargs),
+    "ir_k7_e3":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 3, stride, kernel=7, **kwargs),
+    "ir_k7_e6":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 6, stride, kernel=7, **kwargs),
+    "ir_k7_sep":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, expansion, stride, kernel=7, cdw=True, **kwargs),
+    "ir_k7_sep_e1":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 1, stride, kernel=7, cdw=True, **kwargs),
+    "ir_k7_sep_e3":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 3, stride, kernel=7, cdw=True, **kwargs),
+    "ir_k7_sep_e6":
+        lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
+            C_in, C_out, 6, stride, kernel=7, cdw=True, **kwargs),
 }
 
 
 class Identity(nn.Module):
+
     def __init__(self, C_in, C_out, stride):
         super(Identity, self).__init__()
-        self.conv = (
-            ConvBNRelu(
-                C_in,
-                C_out,
-                kernel=1,
-                stride=stride,
-                pad=0,
-                no_bias=1,
-                use_relu="relu",
-                bn_type="bn",
-            )
-            if C_in != C_out or stride != 1
-            else None
-        )
+        self.conv = (ConvBNRelu(
+            C_in,
+            C_out,
+            kernel=1,
+            stride=stride,
+            pad=0,
+            no_bias=1,
+            use_relu="relu",
+            bn_type="bn",
+        ) if C_in != C_out or stride != 1 else None)
 
     def forward(self, x):
         if self.conv:
@@ -219,6 +249,7 @@ class Identity(nn.Module):
 
 
 class CascadeConv3x3(nn.Sequential):
+
     def __init__(self, C_in, C_out, stride):
         assert stride in [1, 2]
         ops = [
@@ -239,10 +270,12 @@ class CascadeConv3x3(nn.Sequential):
 
 
 class Shift(nn.Module):
+
     def __init__(self, C, kernel_size, stride, padding):
         super(Shift, self).__init__()
         self.C = C
-        kernel = torch.zeros((C, 1, kernel_size, kernel_size), dtype=torch.float32)
+        kernel = torch.zeros((C, 1, kernel_size, kernel_size),
+                             dtype=torch.float32)
         ch_idx = 0
 
         assert stride in [1, 2]
@@ -252,7 +285,7 @@ class Shift(nn.Module):
         self.dilation = 1
 
         hks = kernel_size // 2
-        ksq = kernel_size ** 2
+        ksq = kernel_size**2
 
         for i in range(kernel_size):
             for j in range(kernel_size):
@@ -260,7 +293,7 @@ class Shift(nn.Module):
                     num_ch = C // ksq + C % ksq
                 else:
                     num_ch = C // ksq
-                kernel[ch_idx : ch_idx + num_ch, 0, i, j] = 1
+                kernel[ch_idx:ch_idx + num_ch, 0, i, j] = 1
                 ch_idx += num_ch
 
         self.register_parameter("bias", None)
@@ -278,21 +311,20 @@ class Shift(nn.Module):
                 self.C,  # groups
             )
 
-        output_shape = [
-            (i + 2 * p - (di * (k - 1) + 1)) // d + 1
-            for i, p, di, k, d in zip(
-                x.shape[-2:],
-                (self.padding, self.dilation),
-                (self.dilation, self.dilation),
-                (self.kernel_size, self.kernel_size),
-                (self.stride, self.stride),
-            )
-        ]
+        output_shape = [(i + 2 * p - (di * (k - 1) + 1)) // d + 1
+                        for i, p, di, k, d in zip(
+                            x.shape[-2:],
+                            (self.padding, self.dilation),
+                            (self.dilation, self.dilation),
+                            (self.kernel_size, self.kernel_size),
+                            (self.stride, self.stride),
+                        )]
         output_shape = [x.shape[0], self.C] + output_shape
         return _NewEmptyTensorOp.apply(x, output_shape)
 
 
 class ShiftBlock5x5(nn.Sequential):
+
     def __init__(self, C_in, C_out, expansion, stride):
         assert stride in [1, 2]
         self.res_connect = (stride == 1) and (C_in == C_out)
@@ -320,6 +352,7 @@ class ShiftBlock5x5(nn.Sequential):
 
 
 class ChannelShuffle(nn.Module):
+
     def __init__(self, groups):
         super(ChannelShuffle, self).__init__()
         self.groups = groups
@@ -329,31 +362,25 @@ class ChannelShuffle(nn.Module):
         N, C, H, W = x.size()
         g = self.groups
         assert C % g == 0, "Incompatible group size {} for input channel {}".format(
-            g, C
-        )
-        return (
-            x.view(N, g, int(C / g), H, W)
-            .permute(0, 2, 1, 3, 4)
-            .contiguous()
-            .view(N, C, H, W)
-        )
+            g, C)
+        return (x.view(N, g, int(C / g), H,
+                       W).permute(0, 2, 1, 3, 4).contiguous().view(N, C, H, W))
 
 
 class ConvBNRelu(nn.Sequential):
-    def __init__(
-        self,
-        input_depth,
-        output_depth,
-        kernel,
-        stride,
-        pad,
-        no_bias,
-        use_relu,
-        bn_type,
-        group=1,
-        *args,
-        **kwargs
-    ):
+
+    def __init__(self,
+                 input_depth,
+                 output_depth,
+                 kernel,
+                 stride,
+                 pad,
+                 no_bias,
+                 use_relu,
+                 bn_type,
+                 group=1,
+                 *args,
+                 **kwargs):
         super(ConvBNRelu, self).__init__()
 
         assert use_relu in ["relu", None]
@@ -365,17 +392,15 @@ class ConvBNRelu(nn.Sequential):
         assert bn_type in ["bn", "af", "gn", None]
         assert stride in [1, 2, 4]
 
-        op = Conv2d(
-            input_depth,
-            output_depth,
-            kernel_size=kernel,
-            stride=stride,
-            padding=pad,
-            bias=not no_bias,
-            groups=group,
-            *args,
-            **kwargs
-        )
+        op = Conv2d(input_depth,
+                    output_depth,
+                    kernel_size=kernel,
+                    stride=stride,
+                    padding=pad,
+                    bias=not no_bias,
+                    groups=group,
+                    *args,
+                    **kwargs)
         nn.init.kaiming_normal_(op.weight, mode="fan_out", nonlinearity="relu")
         if op.bias is not None:
             nn.init.constant_(op.bias, 0.0)
@@ -384,7 +409,8 @@ class ConvBNRelu(nn.Sequential):
         if bn_type == "bn":
             bn_op = BatchNorm2d(output_depth)
         elif bn_type == "gn":
-            bn_op = nn.GroupNorm(num_groups=gn_group, num_channels=output_depth)
+            bn_op = nn.GroupNorm(num_groups=gn_group,
+                                 num_channels=output_depth)
         elif bn_type == "af":
             bn_op = FrozenBatchNorm2d(output_depth)
         if bn_type is not None:
@@ -403,15 +429,15 @@ class SEModule(nn.Module):
         conv1 = Conv2d(C, mid, 1, 1, 0)
         conv2 = Conv2d(mid, C, 1, 1, 0)
 
-        self.op = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1), conv1, nn.ReLU(inplace=True), conv2, nn.Sigmoid()
-        )
+        self.op = nn.Sequential(nn.AdaptiveAvgPool2d(1), conv1,
+                                nn.ReLU(inplace=True), conv2, nn.Sigmoid())
 
     def forward(self, x):
         return x * self.op(x)
 
 
 class Upsample(nn.Module):
+
     def __init__(self, scale_factor, mode, align_corners=None):
         super(Upsample, self).__init__()
         self.scale = scale_factor
@@ -419,18 +445,16 @@ class Upsample(nn.Module):
         self.align_corners = align_corners
 
     def forward(self, x):
-        return interpolate(
-            x, scale_factor=self.scale, mode=self.mode,
-            align_corners=self.align_corners
-        )
+        return interpolate(x,
+                           scale_factor=self.scale,
+                           mode=self.mode,
+                           align_corners=self.align_corners)
 
 
 def _get_upsample_op(stride):
-    assert (
-        stride in [1, 2, 4]
-        or stride in [-1, -2, -4]
-        or (isinstance(stride, tuple) and all(x in [-1, -2, -4] for x in stride))
-    )
+    assert (stride in [1, 2, 4] or stride in [-1, -2, -4] or
+            (isinstance(stride, tuple) and
+             all(x in [-1, -2, -4] for x in stride)))
 
     scales = stride
     ret = None
@@ -443,6 +467,7 @@ def _get_upsample_op(stride):
 
 
 class IRFBlock(nn.Module):
+
     def __init__(
         self,
         input_depth,
@@ -595,7 +620,11 @@ def _block_cfgs_to_list(block_cfgs):
     for stage_idx, stage in enumerate(block_cfgs):
         stage = expand_stage_cfg(stage)
         for block_idx, block in enumerate(stage):
-            cur = {"stage_idx": stage_idx, "block_idx": block_idx, "block": block}
+            cur = {
+                "stage_idx": stage_idx,
+                "block_idx": block_idx,
+                "block": block
+            }
             ret.append(cur)
     return ret
 
@@ -627,12 +656,10 @@ def _add_to_arch(arch, info, name):
     idx = 0
     for stage_idx, stage in enumerate(info):
         for block_idx, block in enumerate(stage):
-            assert (
-                arch[idx]["stage_idx"] == stage_idx
-                and arch[idx]["block_idx"] == block_idx
-            ), "Index ({}, {}) does not match for block {}".format(
-                stage_idx, block_idx, arch[idx]
-            )
+            assert (arch[idx]["stage_idx"] == stage_idx and
+                    arch[idx]["block_idx"] == block_idx
+                   ), "Index ({}, {}) does not match for block {}".format(
+                       stage_idx, block_idx, arch[idx])
             assert name not in arch[idx]
             arch[idx][name] = block
             idx += 1
@@ -681,9 +708,11 @@ def get_blocks(arch_def, stage_indices=None, block_indices=None):
     ret["stages"] = []
     for block in arch_def["stages"]:
         keep = True
-        if stage_indices not in (None, []) and block["stage_idx"] not in stage_indices:
+        if stage_indices not in (
+                None, []) and block["stage_idx"] not in stage_indices:
             keep = False
-        if block_indices not in (None, []) and block["block_idx"] not in block_indices:
+        if block_indices not in (
+                None, []) and block["block_idx"] not in block_indices:
             keep = False
         if keep:
             ret["stages"].append(block)
@@ -691,6 +720,7 @@ def get_blocks(arch_def, stage_indices=None, block_indices=None):
 
 
 class FBNetBuilder(object):
+
     def __init__(
         self,
         width_ratio,
@@ -733,8 +763,7 @@ class FBNetBuilder(object):
         """ blocks: [{}, {}, ...]
         """
         assert isinstance(blocks, list) and all(
-            isinstance(x, dict) for x in blocks
-        ), blocks
+            isinstance(x, dict) for x in blocks), blocks
 
         modules = OrderedDict()
         for block in blocks:
@@ -763,9 +792,8 @@ class FBNetBuilder(object):
             return nn.Sequential()
 
         if channel_scale > 0:
-            last_channel = (
-                int(channels * self.width_ratio) if self.width_ratio > 1.0 else channels
-            )
+            last_channel = (int(channels * self.width_ratio)
+                            if self.width_ratio > 1.0 else channels)
             last_channel = int(last_channel * channel_scale)
         else:
             last_channel = int(self.last_depth * (-channel_scale))
@@ -792,20 +820,17 @@ class FBNetBuilder(object):
     #     ret = model.AveragePool(blob_in, "final_avg", kernel=kernel_size, stride=1)
     #     return ret
 
-    def _add_ir_block(
-        self, dim_in, dim_out, stride, expand_ratio, block_op_type, **kwargs
-    ):
-        ret = PRIMITIVES[block_op_type](
-            dim_in,
-            dim_out,
-            expansion=expand_ratio,
-            stride=stride,
-            bn_type=self.bn_type,
-            width_divisor=self.width_divisor,
-            dw_skip_bn=self.dw_skip_bn,
-            dw_skip_relu=self.dw_skip_relu,
-            **kwargs
-        )
+    def _add_ir_block(self, dim_in, dim_out, stride, expand_ratio,
+                      block_op_type, **kwargs):
+        ret = PRIMITIVES[block_op_type](dim_in,
+                                        dim_out,
+                                        expansion=expand_ratio,
+                                        stride=stride,
+                                        bn_type=self.bn_type,
+                                        width_divisor=self.width_divisor,
+                                        dw_skip_bn=self.dw_skip_bn,
+                                        dw_skip_relu=self.dw_skip_relu,
+                                        **kwargs)
         return ret, ret.output_depth
 
     def add_ir_block(self, tcns, block_op_types, **kwargs):
@@ -813,17 +838,16 @@ class FBNetBuilder(object):
         assert n == 1
         out_depth = self._get_divisible_width(int(c * self.width_ratio))
         dim_in = self.last_depth
-        op, ret_depth = self._add_ir_block(
-            dim_in,
-            out_depth,
-            stride=s,
-            expand_ratio=t,
-            block_op_type=block_op_types[0],
-            **kwargs
-        )
+        op, ret_depth = self._add_ir_block(dim_in,
+                                           out_depth,
+                                           stride=s,
+                                           expand_ratio=t,
+                                           block_op_type=block_op_types[0],
+                                           **kwargs)
         self.last_depth = ret_depth
         return op
 
     def _get_divisible_width(self, width):
-        ret = _get_divisible_by(int(width), self.width_divisor, self.width_divisor)
+        ret = _get_divisible_by(int(width), self.width_divisor,
+                                self.width_divisor)
         return ret

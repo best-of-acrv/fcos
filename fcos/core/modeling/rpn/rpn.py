@@ -3,13 +3,13 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from fcos_core.modeling import registry
-from fcos_core.modeling.box_coder import BoxCoder
-from fcos_core.modeling.rpn.retinanet.retinanet import build_retinanet
-from fcos_core.modeling.rpn.fcos.fcos import build_fcos
 from .loss import make_rpn_loss_evaluator
 from .anchor_generator import make_anchor_generator
 from .inference import make_rpn_postprocessor
+from ...modeling import registry
+from ...modeling.box_coder import BoxCoder
+from ...modeling.rpn.retinanet.retinanet import build_retinanet
+from ...modeling.rpn.fcos.fcos import build_fcos
 
 
 class RPNHeadConvRegressor(nn.Module):
@@ -25,10 +25,14 @@ class RPNHeadConvRegressor(nn.Module):
             num_anchors (int): number of anchors to be predicted
         """
         super(RPNHeadConvRegressor, self).__init__()
-        self.cls_logits = nn.Conv2d(in_channels, num_anchors, kernel_size=1, stride=1)
-        self.bbox_pred = nn.Conv2d(
-            in_channels, num_anchors * 4, kernel_size=1, stride=1
-        )
+        self.cls_logits = nn.Conv2d(in_channels,
+                                    num_anchors,
+                                    kernel_size=1,
+                                    stride=1)
+        self.bbox_pred = nn.Conv2d(in_channels,
+                                   num_anchors * 4,
+                                   kernel_size=1,
+                                   stride=1)
 
         for l in [self.cls_logits, self.bbox_pred]:
             torch.nn.init.normal_(l.weight, std=0.01)
@@ -54,9 +58,11 @@ class RPNHeadFeatureSingleConv(nn.Module):
             in_channels (int): number of channels of the input feature
         """
         super(RPNHeadFeatureSingleConv, self).__init__()
-        self.conv = nn.Conv2d(
-            in_channels, in_channels, kernel_size=3, stride=1, padding=1
-        )
+        self.conv = nn.Conv2d(in_channels,
+                              in_channels,
+                              kernel_size=3,
+                              stride=1,
+                              padding=1)
 
         for l in [self.conv]:
             torch.nn.init.normal_(l.weight, std=0.01)
@@ -85,13 +91,19 @@ class RPNHead(nn.Module):
             num_anchors (int): number of anchors to be predicted
         """
         super(RPNHead, self).__init__()
-        self.conv = nn.Conv2d(
-            in_channels, in_channels, kernel_size=3, stride=1, padding=1
-        )
-        self.cls_logits = nn.Conv2d(in_channels, num_anchors, kernel_size=1, stride=1)
-        self.bbox_pred = nn.Conv2d(
-            in_channels, num_anchors * 4, kernel_size=1, stride=1
-        )
+        self.conv = nn.Conv2d(in_channels,
+                              in_channels,
+                              kernel_size=3,
+                              stride=1,
+                              padding=1)
+        self.cls_logits = nn.Conv2d(in_channels,
+                                    num_anchors,
+                                    kernel_size=1,
+                                    stride=1)
+        self.bbox_pred = nn.Conv2d(in_channels,
+                                   num_anchors * 4,
+                                   kernel_size=1,
+                                   stride=1)
 
         for l in [self.conv, self.cls_logits, self.bbox_pred]:
             torch.nn.init.normal_(l.weight, std=0.01)
@@ -121,14 +133,17 @@ class RPNModule(torch.nn.Module):
         anchor_generator = make_anchor_generator(cfg)
 
         rpn_head = registry.RPN_HEADS[cfg.MODEL.RPN.RPN_HEAD]
-        head = rpn_head(
-            cfg, in_channels, anchor_generator.num_anchors_per_location()[0]
-        )
+        head = rpn_head(cfg, in_channels,
+                        anchor_generator.num_anchors_per_location()[0])
 
         rpn_box_coder = BoxCoder(weights=(1.0, 1.0, 1.0, 1.0))
 
-        box_selector_train = make_rpn_postprocessor(cfg, rpn_box_coder, is_train=True)
-        box_selector_test = make_rpn_postprocessor(cfg, rpn_box_coder, is_train=False)
+        box_selector_train = make_rpn_postprocessor(cfg,
+                                                    rpn_box_coder,
+                                                    is_train=True)
+        box_selector_test = make_rpn_postprocessor(cfg,
+                                                   rpn_box_coder,
+                                                   is_train=False)
 
         loss_evaluator = make_rpn_loss_evaluator(cfg, rpn_box_coder)
 
@@ -157,7 +172,8 @@ class RPNModule(torch.nn.Module):
         anchors = self.anchor_generator(images, features)
 
         if self.training:
-            return self._forward_train(anchors, objectness, rpn_box_regression, targets)
+            return self._forward_train(anchors, objectness, rpn_box_regression,
+                                       targets)
         else:
             return self._forward_test(anchors, objectness, rpn_box_regression)
 
@@ -172,12 +188,10 @@ class RPNModule(torch.nn.Module):
             # For end-to-end models, anchors must be transformed into boxes and
             # sampled into a training batch.
             with torch.no_grad():
-                boxes = self.box_selector_train(
-                    anchors, objectness, rpn_box_regression, targets
-                )
+                boxes = self.box_selector_train(anchors, objectness,
+                                                rpn_box_regression, targets)
         loss_objectness, loss_rpn_box_reg = self.loss_evaluator(
-            anchors, objectness, rpn_box_regression, targets
-        )
+            anchors, objectness, rpn_box_regression, targets)
         losses = {
             "loss_objectness": loss_objectness,
             "loss_rpn_box_reg": loss_rpn_box_reg,
@@ -192,7 +206,8 @@ class RPNModule(torch.nn.Module):
             # models, the proposals are the final output and we return them in
             # high-to-low confidence order.
             inds = [
-                box.get_field("objectness").sort(descending=True)[1] for box in boxes
+                box.get_field("objectness").sort(descending=True)[1]
+                for box in boxes
             ]
             boxes = [box[ind] for box, ind in zip(boxes, inds)]
         return boxes, {}

@@ -3,8 +3,8 @@ import torch
 
 from .bounding_box import BoxList
 
-from fcos_core.layers import nms as _box_nms
-from fcos_core.layers import ml_nms as _box_ml_nms
+from ..layers import nms as _box_nms
+from ..layers import ml_nms as _box_ml_nms
 
 
 def boxlist_nms(boxlist, nms_thresh, max_proposals=-1, score_field="scores"):
@@ -27,13 +27,16 @@ def boxlist_nms(boxlist, nms_thresh, max_proposals=-1, score_field="scores"):
     score = boxlist.get_field(score_field)
     keep = _box_nms(boxes, score, nms_thresh)
     if max_proposals > 0:
-        keep = keep[: max_proposals]
+        keep = keep[:max_proposals]
     boxlist = boxlist[keep]
     return boxlist.convert(mode)
 
 
-def boxlist_ml_nms(boxlist, nms_thresh, max_proposals=-1,
-                   score_field="scores", label_field="labels"):
+def boxlist_ml_nms(boxlist,
+                   nms_thresh,
+                   max_proposals=-1,
+                   score_field="scores",
+                   label_field="labels"):
     """
     Performs non-maximum suppression on a boxlist, with scores specified
     in a boxlist field via score_field.
@@ -54,7 +57,7 @@ def boxlist_ml_nms(boxlist, nms_thresh, max_proposals=-1,
     labels = boxlist.get_field(label_field)
     keep = _box_ml_nms(boxes, scores, labels.float(), nms_thresh)
     if max_proposals > 0:
-        keep = keep[: max_proposals]
+        keep = keep[:max_proposals]
     boxlist = boxlist[keep]
     return boxlist.convert(mode)
 
@@ -70,9 +73,7 @@ def remove_small_boxes(boxlist, min_size):
     # TODO maybe add an API for querying the ws / hs
     xywh_boxes = boxlist.convert("xywh").bbox
     _, _, ws, hs = xywh_boxes.unbind(dim=1)
-    keep = (
-        (ws >= min_size) & (hs >= min_size)
-    ).nonzero().squeeze(1)
+    keep = ((ws >= min_size) & (hs >= min_size)).nonzero().squeeze(1)
     return boxlist[keep]
 
 
@@ -94,7 +95,8 @@ def boxlist_iou(boxlist1, boxlist2):
     """
     if boxlist1.size != boxlist2.size:
         raise RuntimeError(
-                "boxlists should have same image size, got {}, {}".format(boxlist1, boxlist2))
+            "boxlists should have same image size, got {}, {}".format(
+                boxlist1, boxlist2))
 
     N = len(boxlist1)
     M = len(boxlist2)
@@ -147,7 +149,8 @@ def cat_boxlist(bboxes):
     fields = set(bboxes[0].fields())
     assert all(set(bbox.fields()) == fields for bbox in bboxes)
 
-    cat_boxes = BoxList(_cat([bbox.bbox for bbox in bboxes], dim=0), size, mode)
+    cat_boxes = BoxList(_cat([bbox.bbox for bbox in bboxes], dim=0), size,
+                        mode)
 
     for field in fields:
         data = _cat([bbox.get_field(field) for bbox in bboxes], dim=0)

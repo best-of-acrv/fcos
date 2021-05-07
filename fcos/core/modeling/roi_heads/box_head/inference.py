@@ -3,10 +3,10 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from fcos_core.structures.bounding_box import BoxList
-from fcos_core.structures.boxlist_ops import boxlist_nms
-from fcos_core.structures.boxlist_ops import cat_boxlist
-from fcos_core.modeling.box_coder import BoxCoder
+from ....structures.bounding_box import BoxList
+from ....structures.boxlist_ops import boxlist_nms
+from ....structures.boxlist_ops import cat_boxlist
+from ....modeling.box_coder import BoxCoder
 
 
 class PostProcessor(nn.Module):
@@ -16,15 +16,13 @@ class PostProcessor(nn.Module):
     final results
     """
 
-    def __init__(
-        self,
-        score_thresh=0.05,
-        nms=0.5,
-        detections_per_img=100,
-        box_coder=None,
-        cls_agnostic_bbox_reg=False,
-        bbox_aug_enabled=False
-    ):
+    def __init__(self,
+                 score_thresh=0.05,
+                 nms=0.5,
+                 detections_per_img=100,
+                 box_coder=None,
+                 cls_agnostic_bbox_reg=False,
+                 bbox_aug_enabled=False):
         """
         Arguments:
             score_thresh (float)
@@ -65,8 +63,7 @@ class PostProcessor(nn.Module):
         if self.cls_agnostic_bbox_reg:
             box_regression = box_regression[:, -4:]
         proposals = self.box_coder.decode(
-            box_regression.view(sum(boxes_per_image), -1), concat_boxes
-        )
+            box_regression.view(sum(boxes_per_image), -1), concat_boxes)
         if self.cls_agnostic_bbox_reg:
             proposals = proposals.repeat(1, class_prob.shape[1])
 
@@ -76,9 +73,8 @@ class PostProcessor(nn.Module):
         class_prob = class_prob.split(boxes_per_image, dim=0)
 
         results = []
-        for prob, boxes_per_img, image_shape in zip(
-            class_prob, proposals, image_shapes
-        ):
+        for prob, boxes_per_img, image_shape in zip(class_prob, proposals,
+                                                    image_shapes):
             boxlist = self.prepare_boxlist(boxes_per_img, prob, image_shape)
             boxlist = boxlist.clip_to_image(remove_empty=False)
             if not self.bbox_aug_enabled:  # If bbox aug is enabled, we will do it later
@@ -122,16 +118,14 @@ class PostProcessor(nn.Module):
         for j in range(1, num_classes):
             inds = inds_all[:, j].nonzero().squeeze(1)
             scores_j = scores[inds, j]
-            boxes_j = boxes[inds, j * 4 : (j + 1) * 4]
+            boxes_j = boxes[inds, j * 4:(j + 1) * 4]
             boxlist_for_class = BoxList(boxes_j, boxlist.size, mode="xyxy")
             boxlist_for_class.add_field("scores", scores_j)
-            boxlist_for_class = boxlist_nms(
-                boxlist_for_class, self.nms
-            )
+            boxlist_for_class = boxlist_nms(boxlist_for_class, self.nms)
             num_labels = len(boxlist_for_class)
             boxlist_for_class.add_field(
-                "labels", torch.full((num_labels,), j, dtype=torch.int64, device=device)
-            )
+                "labels",
+                torch.full((num_labels,), j, dtype=torch.int64, device=device))
             result.append(boxlist_for_class)
 
         result = cat_boxlist(result)
@@ -141,8 +135,8 @@ class PostProcessor(nn.Module):
         if number_of_detections > self.detections_per_img > 0:
             cls_scores = result.get_field("scores")
             image_thresh, _ = torch.kthvalue(
-                cls_scores.cpu(), number_of_detections - self.detections_per_img + 1
-            )
+                cls_scores.cpu(),
+                number_of_detections - self.detections_per_img + 1)
             keep = cls_scores >= image_thresh.item()
             keep = torch.nonzero(keep).squeeze(1)
             result = result[keep]
@@ -161,12 +155,7 @@ def make_roi_box_post_processor(cfg):
     cls_agnostic_bbox_reg = cfg.MODEL.CLS_AGNOSTIC_BBOX_REG
     bbox_aug_enabled = cfg.TEST.BBOX_AUG.ENABLED
 
-    postprocessor = PostProcessor(
-        score_thresh,
-        nms_thresh,
-        detections_per_img,
-        box_coder,
-        cls_agnostic_bbox_reg,
-        bbox_aug_enabled
-    )
+    postprocessor = PostProcessor(score_thresh, nms_thresh, detections_per_img,
+                                  box_coder, cls_agnostic_bbox_reg,
+                                  bbox_aug_enabled)
     return postprocessor

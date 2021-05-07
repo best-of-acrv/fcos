@@ -1,14 +1,9 @@
 import torch
 
-from ..inference import RPNPostProcessor
-from ..utils import permute_and_flatten
-
-from fcos_core.modeling.box_coder import BoxCoder
-from fcos_core.modeling.utils import cat
-from fcos_core.structures.bounding_box import BoxList
-from fcos_core.structures.boxlist_ops import cat_boxlist
-from fcos_core.structures.boxlist_ops import boxlist_ml_nms
-from fcos_core.structures.boxlist_ops import remove_small_boxes
+from ....structures.bounding_box import BoxList
+from ....structures.boxlist_ops import cat_boxlist
+from ....structures.boxlist_ops import boxlist_ml_nms
+from ....structures.boxlist_ops import remove_small_boxes
 
 
 class FCOSPostProcessor(torch.nn.Module):
@@ -16,16 +11,15 @@ class FCOSPostProcessor(torch.nn.Module):
     Performs post-processing on the outputs of the RetinaNet boxes.
     This is only used in the testing.
     """
-    def __init__(
-        self,
-        pre_nms_thresh,
-        pre_nms_top_n,
-        nms_thresh,
-        fpn_post_nms_top_n,
-        min_size,
-        num_classes,
-        bbox_aug_enabled=False
-    ):
+
+    def __init__(self,
+                 pre_nms_thresh,
+                 pre_nms_top_n,
+                 nms_thresh,
+                 fpn_post_nms_top_n,
+                 min_size,
+                 num_classes,
+                 bbox_aug_enabled=False):
         """
         Arguments:
             pre_nms_thresh (float)
@@ -45,10 +39,9 @@ class FCOSPostProcessor(torch.nn.Module):
         self.num_classes = num_classes
         self.bbox_aug_enabled = bbox_aug_enabled
 
-    def forward_for_single_feature_map(
-            self, locations, box_cls,
-            box_regression, centerness,
-            image_sizes):
+    def forward_for_single_feature_map(self, locations, box_cls,
+                                       box_regression, centerness,
+                                       image_sizes):
         """
         Arguments:
             anchors: list[BoxList]
@@ -100,7 +93,8 @@ class FCOSPostProcessor(torch.nn.Module):
                 per_locations[:, 1] - per_box_regression[:, 1],
                 per_locations[:, 0] + per_box_regression[:, 2],
                 per_locations[:, 1] + per_box_regression[:, 3],
-            ], dim=1)
+            ],
+                                     dim=1)
 
             h, w = image_sizes[i]
             boxlist = BoxList(detections, (int(w), int(h)), mode="xyxy")
@@ -112,7 +106,8 @@ class FCOSPostProcessor(torch.nn.Module):
 
         return results
 
-    def forward(self, locations, box_cls, box_regression, centerness, image_sizes):
+    def forward(self, locations, box_cls, box_regression, centerness,
+                image_sizes):
         """
         Arguments:
             anchors: list[list[BoxList]]
@@ -124,12 +119,10 @@ class FCOSPostProcessor(torch.nn.Module):
                 applying box decoding and NMS
         """
         sampled_boxes = []
-        for _, (l, o, b, c) in enumerate(zip(locations, box_cls, box_regression, centerness)):
+        for _, (l, o, b, c) in enumerate(
+                zip(locations, box_cls, box_regression, centerness)):
             sampled_boxes.append(
-                self.forward_for_single_feature_map(
-                    l, o, b, c, image_sizes
-                )
-            )
+                self.forward_for_single_feature_map(l, o, b, c, image_sizes))
 
         boxlists = list(zip(*sampled_boxes))
         boxlists = [cat_boxlist(boxlist) for boxlist in boxlists]
@@ -155,8 +148,7 @@ class FCOSPostProcessor(torch.nn.Module):
                 cls_scores = result.get_field("scores")
                 image_thresh, _ = torch.kthvalue(
                     cls_scores.cpu(),
-                    number_of_detections - self.fpn_post_nms_top_n + 1
-                )
+                    number_of_detections - self.fpn_post_nms_top_n + 1)
                 keep = cls_scores >= image_thresh.item()
                 keep = torch.nonzero(keep).squeeze(1)
                 result = result[keep]
@@ -171,14 +163,12 @@ def make_fcos_postprocessor(config):
     fpn_post_nms_top_n = config.TEST.DETECTIONS_PER_IMG
     bbox_aug_enabled = config.TEST.BBOX_AUG.ENABLED
 
-    box_selector = FCOSPostProcessor(
-        pre_nms_thresh=pre_nms_thresh,
-        pre_nms_top_n=pre_nms_top_n,
-        nms_thresh=nms_thresh,
-        fpn_post_nms_top_n=fpn_post_nms_top_n,
-        min_size=0,
-        num_classes=config.MODEL.FCOS.NUM_CLASSES,
-        bbox_aug_enabled=bbox_aug_enabled
-    )
+    box_selector = FCOSPostProcessor(pre_nms_thresh=pre_nms_thresh,
+                                     pre_nms_top_n=pre_nms_top_n,
+                                     nms_thresh=nms_thresh,
+                                     fpn_post_nms_top_n=fpn_post_nms_top_n,
+                                     min_size=0,
+                                     num_classes=config.MODEL.FCOS.NUM_CLASSES,
+                                     bbox_aug_enabled=bbox_aug_enabled)
 
     return box_selector

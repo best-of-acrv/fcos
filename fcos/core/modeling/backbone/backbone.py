@@ -3,11 +3,11 @@ from collections import OrderedDict
 
 from torch import nn
 
-from fcos_core.modeling import registry
-from fcos_core.modeling.make_layers import conv_with_kaiming_uniform
 from . import fpn as fpn_module
 from . import resnet
 from . import mobilenet
+from ...modeling import registry
+from ...modeling.make_layers import conv_with_kaiming_uniform
 
 
 @registry.BACKBONES.register("R-50-C4")
@@ -36,9 +36,8 @@ def build_resnet_fpn_backbone(cfg):
             in_channels_stage2 * 8,
         ],
         out_channels=out_channels,
-        conv_block=conv_with_kaiming_uniform(
-            cfg.MODEL.FPN.USE_GN, cfg.MODEL.FPN.USE_RELU
-        ),
+        conv_block=conv_with_kaiming_uniform(cfg.MODEL.FPN.USE_GN,
+                                             cfg.MODEL.FPN.USE_RELU),
         top_blocks=fpn_module.LastLevelMaxPool(),
     )
     model = nn.Sequential(OrderedDict([("body", body), ("fpn", fpn)]))
@@ -62,9 +61,8 @@ def build_resnet_fpn_p3p7_backbone(cfg):
             in_channels_stage2 * 8,
         ],
         out_channels=out_channels,
-        conv_block=conv_with_kaiming_uniform(
-            cfg.MODEL.FPN.USE_GN, cfg.MODEL.FPN.USE_RELU
-        ),
+        conv_block=conv_with_kaiming_uniform(cfg.MODEL.FPN.USE_GN,
+                                             cfg.MODEL.FPN.USE_RELU),
         top_blocks=fpn_module.LastLevelP6P7(in_channels_p6p7, out_channels),
     )
     model = nn.Sequential(OrderedDict([("body", body), ("fpn", fpn)]))
@@ -85,9 +83,8 @@ def build_mnv2_fpn_backbone(cfg):
             in_channels_stage2[3],
         ],
         out_channels=out_channels,
-        conv_block=conv_with_kaiming_uniform(
-            cfg.MODEL.FPN.USE_GN, cfg.MODEL.FPN.USE_RELU
-        ),
+        conv_block=conv_with_kaiming_uniform(cfg.MODEL.FPN.USE_GN,
+                                             cfg.MODEL.FPN.USE_RELU),
         top_blocks=fpn_module.LastLevelP6P7(out_channels, out_channels),
     )
     model = nn.Sequential(OrderedDict([("body", body), ("fpn", fpn)]))

@@ -10,12 +10,11 @@ from torch.nn import functional as F
 from .utils import concat_box_prediction_layers
 
 from ..balanced_positive_negative_sampler import BalancedPositiveNegativeSampler
-from ..utils import cat
 
-from fcos_core.layers import smooth_l1_loss
-from fcos_core.modeling.matcher import Matcher
-from fcos_core.structures.boxlist_ops import boxlist_iou
-from fcos_core.structures.boxlist_ops import cat_boxlist
+from ...layers import smooth_l1_loss
+from ...modeling.matcher import Matcher
+from ...structures.boxlist_ops import boxlist_iou
+from ...structures.boxlist_ops import cat_boxlist
 
 
 class RPNLossComputation(object):
@@ -58,8 +57,7 @@ class RPNLossComputation(object):
         regression_targets = []
         for anchors_per_image, targets_per_image in zip(anchors, targets):
             matched_targets = self.match_targets_to_anchors(
-                anchors_per_image, targets_per_image, self.copied_fields
-            )
+                anchors_per_image, targets_per_image, self.copied_fields)
 
             matched_idxs = matched_targets.get_field("matched_idxs")
             labels_per_image = self.generate_labels_func(matched_targets)
@@ -71,7 +69,8 @@ class RPNLossComputation(object):
 
             # discard anchors that go out of the boundaries of the image
             if "not_visibility" in self.discard_cases:
-                labels_per_image[~anchors_per_image.get_field("visibility")] = -1
+                labels_per_image[~anchors_per_image.get_field("visibility"
+                                                             )] = -1
 
             # discard indices that are between thresholds
             if "between_thresholds" in self.discard_cases:
@@ -80,14 +79,12 @@ class RPNLossComputation(object):
 
             # compute regression targets
             regression_targets_per_image = self.box_coder.encode(
-                matched_targets.bbox, anchors_per_image.bbox
-            )
+                matched_targets.bbox, anchors_per_image.bbox)
 
             labels.append(labels_per_image)
             regression_targets.append(regression_targets_per_image)
 
         return labels, regression_targets
-
 
     def __call__(self, anchors, objectness, box_regression, targets):
         """
@@ -101,11 +98,15 @@ class RPNLossComputation(object):
             objectness_loss (Tensor)
             box_loss (Tensor
         """
-        anchors = [cat_boxlist(anchors_per_image) for anchors_per_image in anchors]
+        anchors = [
+            cat_boxlist(anchors_per_image) for anchors_per_image in anchors
+        ]
         labels, regression_targets = self.prepare_targets(anchors, targets)
         sampled_pos_inds, sampled_neg_inds = self.fg_bg_sampler(labels)
-        sampled_pos_inds = torch.nonzero(torch.cat(sampled_pos_inds, dim=0)).squeeze(1)
-        sampled_neg_inds = torch.nonzero(torch.cat(sampled_neg_inds, dim=0)).squeeze(1)
+        sampled_pos_inds = torch.nonzero(torch.cat(sampled_pos_inds,
+                                                   dim=0)).squeeze(1)
+        sampled_neg_inds = torch.nonzero(torch.cat(sampled_neg_inds,
+                                                   dim=0)).squeeze(1)
 
         sampled_inds = torch.cat([sampled_pos_inds, sampled_neg_inds], dim=0)
 
@@ -125,10 +126,10 @@ class RPNLossComputation(object):
         ) / (sampled_inds.numel())
 
         objectness_loss = F.binary_cross_entropy_with_logits(
-            objectness[sampled_inds], labels[sampled_inds]
-        )
+            objectness[sampled_inds], labels[sampled_inds])
 
         return objectness_loss, box_loss
+
 
 # This function should be overwritten in RetinaNet
 def generate_rpn_labels(matched_targets):
@@ -145,13 +146,8 @@ def make_rpn_loss_evaluator(cfg, box_coder):
     )
 
     fg_bg_sampler = BalancedPositiveNegativeSampler(
-        cfg.MODEL.RPN.BATCH_SIZE_PER_IMAGE, cfg.MODEL.RPN.POSITIVE_FRACTION
-    )
+        cfg.MODEL.RPN.BATCH_SIZE_PER_IMAGE, cfg.MODEL.RPN.POSITIVE_FRACTION)
 
-    loss_evaluator = RPNLossComputation(
-        matcher,
-        fg_bg_sampler,
-        box_coder,
-        generate_rpn_labels
-    )
+    loss_evaluator = RPNLossComputation(matcher, fg_bg_sampler, box_coder,
+                                        generate_rpn_labels)
     return loss_evaluator

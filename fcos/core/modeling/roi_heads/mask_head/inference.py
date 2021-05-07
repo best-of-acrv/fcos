@@ -1,10 +1,9 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
-import numpy as np
 import torch
 from torch import nn
-from fcos_core.layers.misc import interpolate
 
-from fcos_core.structures.bounding_box import BoxList
+from ....layers.misc import interpolate
+from ....structures.bounding_box import BoxList
 
 
 # TODO check if want to return a single BoxList or a composite
@@ -76,8 +75,8 @@ class MaskPostProcessorCOCOFormat(MaskPostProcessor):
         for result in results:
             masks = result.get_field("mask").cpu()
             rles = [
-                mask_util.encode(np.array(mask[0, :, :, np.newaxis], order="F"))[0]
-                for mask in masks
+                mask_util.encode(np.array(mask[0, :, :, np.newaxis],
+                                          order="F"))[0] for mask in masks
             ]
             for rle in rles:
                 rle["counts"] = rle["counts"].decode("utf-8")
@@ -148,9 +147,8 @@ def paste_mask_in_image(mask, box, im_h, im_w, thresh=0.5, padding=1):
     y_0 = max(box[1], 0)
     y_1 = min(box[3] + 1, im_h)
 
-    im_mask[y_0:y_1, x_0:x_1] = mask[
-        (y_0 - box[1]) : (y_1 - box[1]), (x_0 - box[0]) : (x_1 - box[0])
-    ]
+    im_mask[y_0:y_1, x_0:x_1] = mask[(y_0 - box[1]):(y_1 - box[1]),
+                                     (x_0 - box[0]):(x_1 - box[0])]
     return im_mask
 
 
@@ -168,7 +166,8 @@ class Masker(object):
         boxes = boxes.convert("xyxy")
         im_w, im_h = boxes.size
         res = [
-            paste_mask_in_image(mask[0], box, im_h, im_w, self.threshold, self.padding)
+            paste_mask_in_image(mask[0], box, im_h, im_w, self.threshold,
+                                self.padding)
             for mask, box in zip(masks, boxes.bbox)
         ]
         if len(res) > 0:
@@ -182,13 +181,15 @@ class Masker(object):
             boxes = [boxes]
 
         # Make some sanity check
-        assert len(boxes) == len(masks), "Masks and boxes should have the same length."
+        assert len(boxes) == len(
+            masks), "Masks and boxes should have the same length."
 
         # TODO:  Is this JIT compatible?
         # If not we should make it compatible.
         results = []
         for mask, box in zip(masks, boxes):
-            assert mask.shape[0] == len(box), "Number of objects should be the same."
+            assert mask.shape[0] == len(
+                box), "Number of objects should be the same."
             result = self.forward_single_image(mask, box)
             results.append(result)
         return results

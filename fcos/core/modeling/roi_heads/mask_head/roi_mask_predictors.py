@@ -2,13 +2,14 @@
 from torch import nn
 from torch.nn import functional as F
 
-from fcos_core.layers import Conv2d
-from fcos_core.layers import ConvTranspose2d
-from fcos_core.modeling import registry
+from ....layers import Conv2d
+from ....layers import ConvTranspose2d
+from ....modeling import registry
 
 
 @registry.ROI_MASK_PREDICTOR.register("MaskRCNNC4Predictor")
 class MaskRCNNC4Predictor(nn.Module):
+
     def __init__(self, cfg, in_channels):
         super(MaskRCNNC4Predictor, self).__init__()
         num_classes = cfg.MODEL.ROI_BOX_HEAD.NUM_CLASSES
@@ -24,7 +25,9 @@ class MaskRCNNC4Predictor(nn.Module):
             elif "weight" in name:
                 # Caffe2 implementation uses MSRAFill, which in fact
                 # corresponds to kaiming_normal_ in PyTorch
-                nn.init.kaiming_normal_(param, mode="fan_out", nonlinearity="relu")
+                nn.init.kaiming_normal_(param,
+                                        mode="fan_out",
+                                        nonlinearity="relu")
 
     def forward(self, x):
         x = F.relu(self.conv5_mask(x))
@@ -33,6 +36,7 @@ class MaskRCNNC4Predictor(nn.Module):
 
 @registry.ROI_MASK_PREDICTOR.register("MaskRCNNConv1x1Predictor")
 class MaskRCNNConv1x1Predictor(nn.Module):
+
     def __init__(self, cfg, in_channels):
         super(MaskRCNNConv1x1Predictor, self).__init__()
         num_classes = cfg.MODEL.ROI_BOX_HEAD.NUM_CLASSES
@@ -46,7 +50,9 @@ class MaskRCNNConv1x1Predictor(nn.Module):
             elif "weight" in name:
                 # Caffe2 implementation uses MSRAFill, which in fact
                 # corresponds to kaiming_normal_ in PyTorch
-                nn.init.kaiming_normal_(param, mode="fan_out", nonlinearity="relu")
+                nn.init.kaiming_normal_(param,
+                                        mode="fan_out",
+                                        nonlinearity="relu")
 
     def forward(self, x):
         return self.mask_fcn_logits(x)

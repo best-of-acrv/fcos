@@ -1,6 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 # from ._utils import _C
-from fcos_core import _C
+from .. import _C
 
 nms = _C.nms
 ml_nms = _C.ml_nms

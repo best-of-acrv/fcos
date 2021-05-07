@@ -11,8 +11,8 @@ except:
     from torch.hub import urlparse
     from torch.hub import HASH_REGEX
 
-from fcos_core.utils.comm import is_main_process
-from fcos_core.utils.comm import synchronize
+from ..utils.comm import is_main_process
+from ..utils.comm import synchronize
 
 
 # very similar to https://github.com/pytorch/pytorch/blob/master/torch/utils/model_zoo.py
@@ -36,7 +36,8 @@ def cache_url(url, model_dir=None, progress=True):
     """
     if model_dir is None:
         torch_home = os.path.expanduser(os.getenv('TORCH_HOME', '~/.torch'))
-        model_dir = os.getenv('TORCH_MODEL_ZOO', os.path.join(torch_home, 'models'))
+        model_dir = os.getenv('TORCH_MODEL_ZOO',
+                              os.path.join(torch_home, 'models'))
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
     parts = urlparse(url)

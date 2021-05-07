@@ -51,13 +51,16 @@ class Fcos(object):
                  dataset_dir=None,
                  output_directory='./eval_output',
                  output_images=False):
+        # TODO merge from eval.py
         pass
 
     def predict(self, *, image=None, image_file=None, output_file=None):
+        # TODO create using the output_image methodology of eval.py
         pass
 
     def train(self,
               dataset_name,
               *,
               output_directory=os.path.expanduser('~/fcos-output')):
+        # TODO merge from eval.py
         pass

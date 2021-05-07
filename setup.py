@@ -9,7 +9,7 @@ import torch.utils.cpp_extension as tcpp
 def get_extensions():
     root = resource_filename('fcos', os.path.join('core', 'csrc'))
     is_cuda = ((torch.cuda.is_available() and tcpp.CUDA_HOME is not None) or
-               os.os.getenv("FORCE_CUDA", "0") == "1")
+               os.getenv("FORCE_CUDA", "0") == "1")
 
     ext = tcpp.CUDAExtension if is_cuda else tcpp.CppExtension
 
@@ -32,7 +32,7 @@ def get_extensions():
     }
 
     return [
-        ext("fcos_core._C",
+        ext("fcos.core._C",
             sources,
             include_dirs=[root],
             define_macros=define_macros,

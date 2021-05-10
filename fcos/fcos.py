@@ -12,6 +12,7 @@ from .core.utils.logger import setup_logger
 from .core.utils.miscellaneous import mkdir
 
 from .helpers import config_by_name
+from .helpers import download_model
 
 PRETRAINED_MODELS = {
     'FCOS_imprv_R_50_FPN_1x':
@@ -56,9 +57,11 @@ class Fcos(object):
         self.name = name
 
         # TODO handle loading snapshots and pre-trained models...
-        self.load_pretrained = (
-            None if load_pretrained is None else _sanitise_arg(
-                load_pretrained, 'load_pretrained', PRETRAINED_MODELS.keys()))
+        self.load_pretrained = (None if load_pretrained is None else
+                                _sanitise_arg(load_pretrained,
+                                              'load_pretrained',
+                                              PRETRAINED_MODELS.keys(),
+                                              lower=False))
         self.load_snapshot = load_snapshot
 
         # Try setting up GPU integration
@@ -76,12 +79,11 @@ class Fcos(object):
         # Load model based on the specified parameters
         self.model = build_detection_model(cfg)
         self.checkpointer = DetectronCheckpointer(cfg, self.model)
+        print("\nLOADING PRE-TRAINED WEIGHTS INTO DETECTRON MODEL:")
+        _load_pretrained(self.load_pretrained, self.checkpointer)
         if self.load_snapshot:
             print("\nLOADING SNAPSHOT INTO DETECTRON MODEL:")
             _load_snapshot(self.load_snapshot, self.checkpointer)
-        else:
-            print("\nLOADING PRE-TRAINED WEIGHTS INTO DETECTRON MODEL")
-            _load_pretrained(self.load_pretrained, self.checkpointer)
         self.model.to(cfg.MODEL.DEVICE)
 
     def evaluate(self,
@@ -106,18 +108,18 @@ class Fcos(object):
         pass
 
 
-def _load_pretrained(pretrained_path, checkpointer):
-    checkpointer.load(os.path.join(pretrained_path, 'models',
-                                   cfg.MODEL.WEIGHT))
+def _load_pretrained(pretrained_name, checkpointer):
+    checkpointer.load(
+        download_model(pretrained_name, PRETRAINED_MODELS[pretrained_name]))
 
 
 def _load_snapshot(snapshot_path, checkpointer):
     checkpointer.load(snapshot_path)
 
 
-def _sanitise_arg(value, name, supported_list):
-    ret = value.lower() if type(value) is str else value
-    if ret not in [s.lower() for s in supported_list]:
+def _sanitise_arg(value, name, supported_list, lower=True):
+    ret = value.lower() if lower and type(value) is str else value
+    if ret not in supported_list:
         raise ValueError("Invalid '%s' provided. Supported values are one of:"
                          "\n\t%s" % (name, supported_list))
     return ret

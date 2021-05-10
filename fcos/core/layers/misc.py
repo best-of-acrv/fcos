@@ -132,11 +132,11 @@ class DFConv2d(torch.nn.Module):
         else:
             offset_base_channels = kernel_size * kernel_size
         if with_modulated_dcn:
-            from fcos_core.layers import ModulatedDeformConv
+            from ..layers import ModulatedDeformConv
             offset_channels = offset_base_channels * 3  # default: 27
             conv_block = ModulatedDeformConv
         else:
-            from fcos_core.layers import DeformConv
+            from ..layers import DeformConv
             offset_channels = offset_base_channels * 2  # default: 18
             conv_block = DeformConv
         self.offset = Conv2d(

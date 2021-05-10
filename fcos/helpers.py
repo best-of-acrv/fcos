@@ -5,10 +5,19 @@ from six.moves import urllib
 import torch
 
 _CACHE_LOCATION = '.cache'
+_CONFIGS_LOCATION = 'configs'
 
 
 def cache_location():
     return pkg_resources.resource_filename(__name__, _CACHE_LOCATION)
+
+
+def config_by_name(name, must_exist=True):
+    fn = pkg_resources.resource_filename(__name__,
+                                         os.path.join(_CONFIGS_LOCATION, name))
+    if must_exist and not os.path.exists(fn):
+        raise ValueError('No config exists with the filepath:\n\t%s' % fn)
+    return fn
 
 
 def download_model(model_name, model_url, model_dir=None, map_location=None):

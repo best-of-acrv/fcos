@@ -49,14 +49,12 @@ class Fcos(object):
             model_seed=0,
             name='fcos'):
         # Apply sanitised args
-        # TODO sanitising if needed?
         self.config_file = config_file
         self.config_list = config_list
         self.gpu_id = gpu_id
         self.model_seed = model_seed
         self.name = name
 
-        # TODO handle loading snapshots and pre-trained models...
         self.load_pretrained = (None if load_pretrained is None else
                                 _sanitise_arg(load_pretrained,
                                               'load_pretrained',

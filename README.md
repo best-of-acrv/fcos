@@ -25,6 +25,7 @@ This repository brings the work from a number of sources together. Please see th
 - our original paper: ["FCOS: Fully convolutional one-stage object detection"](#citing-our-work)
 - our latest paper: ["FCOS: A Simple and Strong Anchor-free Object Detector"](#citing-our-work)
 - the original FCOS implementation: [https://github.com/tianzhi0549/FCOS](https://github.com/tianzhi0549/FCOS)
+- implementation in the AdelaiDet toolbox: [https://github.com/aim-uofa/AdelaiDet/blob/master/configs/FCOS-Detection/README.md#fcos-real-time-models](https://github.com/aim-uofa/AdelaiDet/blob/master/configs/FCOS-Detection/README.md#fcos-real-time-models)
 
 ## Installing FCOS
 
@@ -202,4 +203,3 @@ To train your own FCOS model, run `train.py`.
 By default to assist with training, models will be preloaded with ImageNet weights for the backbone ResNet encoder.
 For example, to train using a RefineNet-50 model, run the following command from the root directory:
 `python train.py --config-file configs/fcos/fcos_imprv_R_50_FPN_1x.yaml`
-

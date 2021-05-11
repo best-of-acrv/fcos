@@ -5,9 +5,9 @@ import torch
 from collections import OrderedDict
 from tqdm import tqdm
 
-from fcos_core.modeling.roi_heads.mask_head.inference import Masker
-from fcos_core.structures.bounding_box import BoxList
-from fcos_core.structures.boxlist_ops import boxlist_iou
+from .....modeling.roi_heads.mask_head.inference import Masker
+from .....structures.bounding_box import BoxList
+from .....structures.boxlist_ops import boxlist_iou
 
 
 def do_coco_evaluation(
@@ -27,13 +27,15 @@ def do_coco_evaluation(
         res = COCOResults("box_proposal")
         for limit in [100, 1000]:
             for area, suffix in areas.items():
-                stats = evaluate_box_proposals(
-                    predictions, dataset, area=area, limit=limit
-                )
+                stats = evaluate_box_proposals(predictions,
+                                               dataset,
+                                               area=area,
+                                               limit=limit)
                 key = "AR{}@{:d}".format(suffix, limit)
                 res.results["box_proposal"][key] = stats["ar"].item()
         logger.info(res)
-        check_expected_results(res, expected_results, expected_results_sigma_tol)
+        check_expected_results(res, expected_results,
+                               expected_results_sigma_tol)
         if output_folder:
             torch.save(res, os.path.join(output_folder, "box_proposals.pth"))
         return
@@ -44,10 +46,12 @@ def do_coco_evaluation(
         coco_results["bbox"] = prepare_for_coco_detection(predictions, dataset)
     if "segm" in iou_types:
         logger.info("Preparing segm results")
-        coco_results["segm"] = prepare_for_coco_segmentation(predictions, dataset)
+        coco_results["segm"] = prepare_for_coco_segmentation(
+            predictions, dataset)
     if 'keypoints' in iou_types:
         logger.info('Preparing keypoints results')
-        coco_results['keypoints'] = prepare_for_coco_keypoint(predictions, dataset)
+        coco_results['keypoints'] = prepare_for_coco_keypoint(
+            predictions, dataset)
 
     results = COCOResults(*iou_types)
     logger.info("Evaluating predictions")
@@ -56,12 +60,13 @@ def do_coco_evaluation(
             file_path = f.name
             if output_folder:
                 file_path = os.path.join(output_folder, iou_type + ".json")
-            res = evaluate_predictions_on_coco(
-                dataset.coco, coco_results[iou_type], file_path, iou_type
-            )
+            res = evaluate_predictions_on_coco(dataset.coco,
+                                               coco_results[iou_type],
+                                               file_path, iou_type)
             results.update(res)
     logger.info(results)
-    check_expected_results(results, expected_results, expected_results_sigma_tol)
+    check_expected_results(results, expected_results,
+                           expected_results_sigma_tol)
     if output_folder:
         torch.save(results, os.path.join(output_folder, "coco_results.pth"))
     return results, coco_results
@@ -85,19 +90,16 @@ def prepare_for_coco_detection(predictions, dataset):
         scores = prediction.get_field("scores").tolist()
         labels = prediction.get_field("labels").tolist()
 
-        mapped_labels = [dataset.contiguous_category_id_to_json_id[i] for i in labels]
+        mapped_labels = [
+            dataset.contiguous_category_id_to_json_id[i] for i in labels
+        ]
 
-        coco_results.extend(
-            [
-                {
-                    "image_id": original_id,
-                    "category_id": mapped_labels[k],
-                    "bbox": box,
-                    "score": scores[k],
-                }
-                for k, box in enumerate(boxes)
-            ]
-        )
+        coco_results.extend([{
+            "image_id": original_id,
+            "category_id": mapped_labels[k],
+            "bbox": box,
+            "score": scores[k],
+        } for k, box in enumerate(boxes)])
     return coco_results
 
 
@@ -139,19 +141,16 @@ def prepare_for_coco_segmentation(predictions, dataset):
         for rle in rles:
             rle["counts"] = rle["counts"].decode("utf-8")
 
-        mapped_labels = [dataset.contiguous_category_id_to_json_id[i] for i in labels]
+        mapped_labels = [
+            dataset.contiguous_category_id_to_json_id[i] for i in labels
+        ]
 
-        coco_results.extend(
-            [
-                {
-                    "image_id": original_id,
-                    "category_id": mapped_labels[k],
-                    "segmentation": rle,
-                    "score": scores[k],
-                }
-                for k, rle in enumerate(rles)
-            ]
-        )
+        coco_results.extend([{
+            "image_id": original_id,
+            "category_id": mapped_labels[k],
+            "segmentation": rle,
+            "score": scores[k],
+        } for k, rle in enumerate(rles)])
     return coco_results
 
 
@@ -174,21 +173,28 @@ def prepare_for_coco_keypoint(predictions, dataset):
         labels = prediction.get_field('labels').tolist()
         keypoints = prediction.get_field('keypoints')
         keypoints = keypoints.resize((image_width, image_height))
-        keypoints = keypoints.keypoints.view(keypoints.keypoints.shape[0], -1).tolist()
+        keypoints = keypoints.keypoints.view(keypoints.keypoints.shape[0],
+                                             -1).tolist()
 
-        mapped_labels = [dataset.contiguous_category_id_to_json_id[i] for i in labels]
+        mapped_labels = [
+            dataset.contiguous_category_id_to_json_id[i] for i in labels
+        ]
 
         coco_results.extend([{
             'image_id': original_id,
             'category_id': mapped_labels[k],
             'keypoints': keypoint,
-            'score': scores[k]} for k, keypoint in enumerate(keypoints)])
+            'score': scores[k]
+        } for k, keypoint in enumerate(keypoints)])
     return coco_results
 
+
 # inspired from Detectron
-def evaluate_box_proposals(
-    predictions, dataset, thresholds=None, area="all", limit=None
-):
+def evaluate_box_proposals(predictions,
+                           dataset,
+                           thresholds=None,
+                           area="all",
+                           limit=None):
     """Evaluate detection proposal recall metrics. This function is a much
     faster alternative to the official COCO API recall evaluation code. However,
     it produces slightly different results.
@@ -206,14 +212,14 @@ def evaluate_box_proposals(
         "512-inf": 7,
     }
     area_ranges = [
-        [0 ** 2, 1e5 ** 2],  # all
-        [0 ** 2, 32 ** 2],  # small
-        [32 ** 2, 96 ** 2],  # medium
-        [96 ** 2, 1e5 ** 2],  # large
-        [96 ** 2, 128 ** 2],  # 96-128
-        [128 ** 2, 256 ** 2],  # 128-256
-        [256 ** 2, 512 ** 2],  # 256-512
-        [512 ** 2, 1e5 ** 2],
+        [0**2, 1e5**2],  # all
+        [0**2, 32**2],  # small
+        [32**2, 96**2],  # medium
+        [96**2, 1e5**2],  # large
+        [96**2, 128**2],  # 96-128
+        [128**2, 256**2],  # 128-256
+        [256**2, 512**2],  # 256-512
+        [512**2, 1e5**2],
     ]  # 512-inf
     assert area in areas, "Unknown area range: {}".format(area)
     area_range = area_ranges[areas[area]]
@@ -236,16 +242,18 @@ def evaluate_box_proposals(
         ann_ids = dataset.coco.getAnnIds(imgIds=original_id)
         anno = dataset.coco.loadAnns(ann_ids)
         gt_boxes = [obj["bbox"] for obj in anno if obj["iscrowd"] == 0]
-        gt_boxes = torch.as_tensor(gt_boxes).reshape(-1, 4)  # guard against no boxes
-        gt_boxes = BoxList(gt_boxes, (image_width, image_height), mode="xywh").convert(
-            "xyxy"
-        )
-        gt_areas = torch.as_tensor([obj["area"] for obj in anno if obj["iscrowd"] == 0])
+        gt_boxes = torch.as_tensor(gt_boxes).reshape(
+            -1, 4)  # guard against no boxes
+        gt_boxes = BoxList(gt_boxes, (image_width, image_height),
+                           mode="xywh").convert("xyxy")
+        gt_areas = torch.as_tensor(
+            [obj["area"] for obj in anno if obj["iscrowd"] == 0])
 
         if len(gt_boxes) == 0:
             continue
 
-        valid_gt_inds = (gt_areas >= area_range[0]) & (gt_areas <= area_range[1])
+        valid_gt_inds = (gt_areas >= area_range[0]) & (gt_areas <=
+                                                       area_range[1])
         gt_boxes = gt_boxes[valid_gt_inds]
 
         num_pos += len(gt_boxes)
@@ -302,9 +310,10 @@ def evaluate_box_proposals(
     }
 
 
-def evaluate_predictions_on_coco(
-    coco_gt, coco_results, json_result_file, iou_type="bbox"
-):
+def evaluate_predictions_on_coco(coco_gt,
+                                 coco_results,
+                                 json_result_file,
+                                 iou_type="bbox"):
     import json
 
     with open(json_result_file, "w") as f:
@@ -313,7 +322,8 @@ def evaluate_predictions_on_coco(
     from pycocotools.coco import COCO
     from pycocotools.cocoeval import COCOeval
 
-    coco_dt = coco_gt.loadRes(str(json_result_file)) if coco_results else COCO()
+    coco_dt = coco_gt.loadRes(
+        str(json_result_file)) if coco_results else COCO()
 
     # coco_dt = coco_gt.loadRes(coco_results)
     coco_eval = COCOeval(coco_gt, coco_dt, iou_type)
@@ -344,14 +354,17 @@ def compute_thresholds_for_classes(coco_eval):
     recall = np.linspace(0, 1, num=precision.shape[0])
     recall = recall[:, None]
 
-    f_measure = (2 * precision * recall) / (np.maximum(precision + recall, 1e-6))
+    f_measure = (2 * precision * recall) / (np.maximum(precision + recall,
+                                                       1e-6))
     max_f_measure = f_measure.max(axis=0)
     max_f_measure_inds = f_measure.argmax(axis=0)
     scores = scores[max_f_measure_inds, range(len(max_f_measure_inds))]
 
     print("Maximum f-measures for classes:")
     print(list(max_f_measure))
-    print("Score thresholds for classes (used in demos for visualization purposes):")
+    print(
+        "Score thresholds for classes (used in demos for visualization purposes):"
+    )
     print(list(scores))
 
 
@@ -377,9 +390,9 @@ class COCOResults(object):
         assert all(iou_type in allowed_types for iou_type in iou_types)
         results = OrderedDict()
         for iou_type in iou_types:
-            results[iou_type] = OrderedDict(
-                [(metric, -1) for metric in COCOResults.METRICS[iou_type]]
-            )
+            results[iou_type] = OrderedDict([
+                (metric, -1) for metric in COCOResults.METRICS[iou_type]
+            ])
         self.results = results
 
     def update(self, coco_eval):
@@ -410,10 +423,9 @@ def check_expected_results(results, expected_results, sigma_tol):
         lo = mean - sigma_tol * std
         hi = mean + sigma_tol * std
         ok = (lo < actual_val) and (actual_val < hi)
-        msg = (
-            "{} > {} sanity check (actual vs. expected): "
-            "{:.3f} vs. mean={:.4f}, std={:.4}, range=({:.4f}, {:.4f})"
-        ).format(task, metric, actual_val, mean, std, lo, hi)
+        msg = ("{} > {} sanity check (actual vs. expected): "
+               "{:.3f} vs. mean={:.4f}, std={:.4}, range=({:.4f}, {:.4f})"
+              ).format(task, metric, actual_val, mean, std, lo, hi)
         if not ok:
             msg = "FAIL: " + msg
             logger.error(msg)

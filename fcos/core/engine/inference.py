@@ -6,13 +6,13 @@ import os
 import torch
 from tqdm import tqdm
 
-from fcos_core.config import cfg
-from fcos_core.data.datasets.evaluation import evaluate
+from .bbox_aug import im_detect_bbox_aug
+from ..config import cfg
+from ..data.datasets.evaluation import evaluate
 from ..utils.comm import is_main_process, get_world_size
 from ..utils.comm import all_gather
 from ..utils.comm import synchronize
 from ..utils.timer import Timer, get_time_str
-from .bbox_aug import im_detect_bbox_aug
 
 
 def compute_on_dataset(model, data_loader, device, timer=None):
@@ -33,8 +33,7 @@ def compute_on_dataset(model, data_loader, device, timer=None):
                 timer.toc()
             output = [o.to(cpu_device) for o in output]
         results_dict.update(
-            {img_id: result for img_id, result in zip(image_ids, output)}
-        )
+            {img_id: result for img_id, result in zip(image_ids, output)})
     return results_dict
 
 
@@ -76,28 +75,29 @@ def inference(
     num_devices = get_world_size()
     logger = logging.getLogger("fcos_core.inference")
     dataset = data_loader.dataset
-    logger.info("Start evaluation on {} dataset({} images).".format(dataset_name, len(dataset)))
+    logger.info("Start evaluation on {} dataset({} images).".format(
+        dataset_name, len(dataset)))
     total_timer = Timer()
     inference_timer = Timer()
     total_timer.tic()
-    predictions = compute_on_dataset(model, data_loader, device, inference_timer)
+    predictions = compute_on_dataset(model, data_loader, device,
+                                     inference_timer)
     # wait for all processes to complete before measuring the time
     synchronize()
     total_time = total_timer.toc()
     total_time_str = get_time_str(total_time)
     logger.info(
         "Total run time: {} ({} s / img per device, on {} devices)".format(
-            total_time_str, total_time * num_devices / len(dataset), num_devices
-        )
-    )
+            total_time_str, total_time * num_devices / len(dataset),
+            num_devices))
     total_infer_time = get_time_str(inference_timer.total_time)
     logger.info(
-        "Model inference time: {} ({} s / img per device, on {} devices)".format(
+        "Model inference time: {} ({} s / img per device, on {} devices)".
+        format(
             total_infer_time,
             inference_timer.total_time * num_devices / len(dataset),
             num_devices,
-        )
-    )
+        ))
 
     predictions = _accumulate_predictions_from_multiple_gpus(predictions)
     if not is_main_process():

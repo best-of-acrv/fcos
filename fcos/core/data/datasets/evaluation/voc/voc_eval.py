@@ -5,8 +5,8 @@ from __future__ import division
 import os
 from collections import defaultdict
 import numpy as np
-from fcos_core.structures.bounding_box import BoxList
-from fcos_core.structures.boxlist_ops import boxlist_iou
+from .....structures.bounding_box import BoxList
+from .....structures.boxlist_ops import boxlist_iou
 
 
 def do_voc_evaluation(dataset, predictions, output_folder, logger):
@@ -34,8 +34,7 @@ def do_voc_evaluation(dataset, predictions, output_folder, logger):
         if i == 0:  # skip background
             continue
         result_str += "{:<16}: {:.4f}\n".format(
-            dataset.map_class_id_to_class_name(i), ap
-        )
+            dataset.map_class_id_to_class_name(i), ap)
     logger.info(result_str)
     if output_folder:
         with open(os.path.join(output_folder, "result.txt"), "w") as fid:
@@ -43,7 +42,10 @@ def do_voc_evaluation(dataset, predictions, output_folder, logger):
     return result
 
 
-def eval_detection_voc(pred_boxlists, gt_boxlists, iou_thresh=0.5, use_07_metric=False):
+def eval_detection_voc(pred_boxlists,
+                       gt_boxlists,
+                       iou_thresh=0.5,
+                       use_07_metric=False):
     """Evaluate on voc dataset.
     Args:
         pred_boxlists(list[BoxList]): pred boxlist, has labels and scores fields.
@@ -54,11 +56,10 @@ def eval_detection_voc(pred_boxlists, gt_boxlists, iou_thresh=0.5, use_07_metric
         dict represents the results
     """
     assert len(gt_boxlists) == len(
-        pred_boxlists
-    ), "Length of gt and pred lists need to be same."
-    prec, rec = calc_detection_voc_prec_rec(
-        pred_boxlists=pred_boxlists, gt_boxlists=gt_boxlists, iou_thresh=iou_thresh
-    )
+        pred_boxlists), "Length of gt and pred lists need to be same."
+    prec, rec = calc_detection_voc_prec_rec(pred_boxlists=pred_boxlists,
+                                            gt_boxlists=gt_boxlists,
+                                            iou_thresh=iou_thresh)
     ap = calc_detection_voc_ap(prec, rec, use_07_metric=use_07_metric)
     return {"ap": ap, "map": np.nanmean(ap)}
 

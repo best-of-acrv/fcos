@@ -1,4 +1,6 @@
+import numpy as np
 import os
+import PIL.Image as Image
 import torch
 
 from .core.config import cfg
@@ -10,7 +12,7 @@ from .core.utils.checkpoint import DetectronCheckpointer
 from .core.utils.collect_env import collect_env_info
 from .core.utils.logger import setup_logger
 from .core.utils.miscellaneous import mkdir
-
+from .evaluator import Evaluator
 from .helpers import config_by_name
 from .helpers import download_model
 
@@ -92,9 +94,35 @@ class Fcos(object):
         # TODO merge from eval.py
         pass
 
-    def predict(self, *, image=None, image_file=None, output_file=None):
-        # TODO create using the output_image methodology of eval.py
-        pass
+    def predict(self,
+                *,
+                image=None,
+                image_file=None,
+                output_file=None,
+                show_mask_heatmaps_if_available=False):
+        # Handle input arguments
+        if image is None and image_file is None:
+            raise ValueError("Only one of 'image' or 'image_file' can be "
+                             "used in a call, not both.")
+        elif image is not None and image_file is not None:
+            raise ValueError("Either 'image' or 'image_file' must be provided")
+        if output_file is not None:
+            os.makedirs(os.path.dirname(output_file), exist_ok=True)
+
+        # Obtain the input image
+        img = (np.array(Image.open(image_file))[:, :, ::-1]
+               if image_file else image)
+
+        # Perform the forward pass
+        self.model.eval()
+        out_img, out_boxes = Evaluator(
+            cfg, show_mask_heatmaps=show_mask_heatmaps_if_available
+        ).run_on_opencv_image(img, self.model)
+
+        # Save the file if requested, & return the output
+        if output_file:
+            Image.fromarray(out_img[:, :, ::-1]).save(output_file)
+        return out_boxes
 
     def train(self,
               dataset_name,

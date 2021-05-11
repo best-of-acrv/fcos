@@ -1,11 +1,11 @@
 import torch
 import torchvision.transforms as TT
 
-from fcos_core.config import cfg
-from fcos_core.data import transforms as T
-from fcos_core.structures.image_list import to_image_list
-from fcos_core.structures.bounding_box import BoxList
-from fcos_core.modeling.rpn.fcos.inference import make_fcos_postprocessor
+from ..config import cfg
+from ..data import transforms as T
+from ..structures.image_list import to_image_list
+from ..structures.bounding_box import BoxList
+from ..modeling.rpn.fcos.inference import make_fcos_postprocessor
 
 
 def im_detect_bbox_aug(model, images, device):
@@ -24,30 +24,31 @@ def im_detect_bbox_aug(model, images, device):
                 boxlists_ts[i].append(boxlist_t.resize(boxlists_ts[i][0].size))
 
     # Compute detections for the original image (identity transform)
-    boxlists_i = im_detect_bbox(
-        model, images, cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MAX_SIZE_TEST, device
-    )
+    boxlists_i = im_detect_bbox(model, images, cfg.INPUT.MIN_SIZE_TEST,
+                                cfg.INPUT.MAX_SIZE_TEST, device)
     add_preds_t(boxlists_i)
 
     # Perform detection on the horizontally flipped image
     if cfg.TEST.BBOX_AUG.H_FLIP:
-        boxlists_hf = im_detect_bbox_hflip(
-            model, images, cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MAX_SIZE_TEST, device
-        )
+        boxlists_hf = im_detect_bbox_hflip(model, images,
+                                           cfg.INPUT.MIN_SIZE_TEST,
+                                           cfg.INPUT.MAX_SIZE_TEST, device)
         add_preds_t(boxlists_hf)
 
     # Compute detections at different scales
     for scale in cfg.TEST.BBOX_AUG.SCALES:
         max_size = cfg.TEST.BBOX_AUG.MAX_SIZE
-        boxlists_scl = im_detect_bbox_scale(
-            model, images, scale, max_size, device
-        )
+        boxlists_scl = im_detect_bbox_scale(model, images, scale, max_size,
+                                            device)
         add_preds_t(boxlists_scl)
 
         if cfg.TEST.BBOX_AUG.SCALE_H_FLIP:
-            boxlists_scl_hf = im_detect_bbox_scale(
-                model, images, scale, max_size, device, hflip=True
-            )
+            boxlists_scl_hf = im_detect_bbox_scale(model,
+                                                   images,
+                                                   scale,
+                                                   max_size,
+                                                   device,
+                                                   hflip=True)
             add_preds_t(boxlists_scl_hf)
 
     assert cfg.MODEL.FCOS_ON, "The multi-scale testing only supports FCOS detector"
@@ -56,8 +57,10 @@ def im_detect_bbox_aug(model, images, device):
     boxlists = []
     for i, boxlist_ts in enumerate(boxlists_ts):
         bbox = torch.cat([boxlist_t.bbox for boxlist_t in boxlist_ts])
-        scores = torch.cat([boxlist_t.get_field('scores') for boxlist_t in boxlist_ts])
-        labels = torch.cat([boxlist_t.get_field('labels') for boxlist_t in boxlist_ts])
+        scores = torch.cat(
+            [boxlist_t.get_field('scores') for boxlist_t in boxlist_ts])
+        labels = torch.cat(
+            [boxlist_t.get_field('labels') for boxlist_t in boxlist_ts])
         boxlist = BoxList(bbox, boxlist_ts[0].size, boxlist_ts[0].mode)
         boxlist.add_field('scores', scores)
         boxlist.add_field('labels', labels)
@@ -77,9 +80,9 @@ def im_detect_bbox(model, images, target_scale, target_max_size, device):
     transform = TT.Compose([
         T.Resize(target_scale, target_max_size),
         TT.ToTensor(),
-        T.Normalize(
-            mean=cfg.INPUT.PIXEL_MEAN, std=cfg.INPUT.PIXEL_STD, to_bgr255=cfg.INPUT.TO_BGR255
-        )
+        T.Normalize(mean=cfg.INPUT.PIXEL_MEAN,
+                    std=cfg.INPUT.PIXEL_STD,
+                    to_bgr255=cfg.INPUT.TO_BGR255)
     ])
     images = [transform(image) for image in images]
     images = to_image_list(images, cfg.DATALOADER.SIZE_DIVISIBILITY)
@@ -95,9 +98,9 @@ def im_detect_bbox_hflip(model, images, target_scale, target_max_size, device):
         T.Resize(target_scale, target_max_size),
         TT.RandomHorizontalFlip(1.0),
         TT.ToTensor(),
-        T.Normalize(
-            mean=cfg.INPUT.PIXEL_MEAN, std=cfg.INPUT.PIXEL_STD, to_bgr255=cfg.INPUT.TO_BGR255
-        )
+        T.Normalize(mean=cfg.INPUT.PIXEL_MEAN,
+                    std=cfg.INPUT.PIXEL_STD,
+                    to_bgr255=cfg.INPUT.TO_BGR255)
     ])
     images = [transform(image) for image in images]
     images = to_image_list(images, cfg.DATALOADER.SIZE_DIVISIBILITY)
@@ -108,13 +111,20 @@ def im_detect_bbox_hflip(model, images, target_scale, target_max_size, device):
     return boxlists_inv
 
 
-def im_detect_bbox_scale(model, images, target_scale, target_max_size, device, hflip=False):
+def im_detect_bbox_scale(model,
+                         images,
+                         target_scale,
+                         target_max_size,
+                         device,
+                         hflip=False):
     """
     Computes bbox detections at the given scale.
     Returns predictions in the scaled image space.
     """
     if hflip:
-        boxlists_scl = im_detect_bbox_hflip(model, images, target_scale, target_max_size, device)
+        boxlists_scl = im_detect_bbox_hflip(model, images, target_scale,
+                                            target_max_size, device)
     else:
-        boxlists_scl = im_detect_bbox(model, images, target_scale, target_max_size, device)
+        boxlists_scl = im_detect_bbox(model, images, target_scale,
+                                      target_max_size, device)
     return boxlists_scl

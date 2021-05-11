@@ -1,6 +1,5 @@
 import os
 import cv2
-import json
 import numpy as np
 import torch
 import torch.nn as nn
@@ -8,14 +7,15 @@ import logging
 from torchvision import transforms as T
 import matplotlib.pyplot as plt
 
-from fcos_core.data.datasets.evaluation import evaluate
-from fcos_core.utils.timer import Timer, get_time_str
-from fcos_core.engine.inference import compute_on_dataset
-from fcos_core.modeling.roi_heads.mask_head.inference import Masker
-from fcos_core.structures.keypoint import PersonKeypoints
-from fcos_core.structures.image_list import to_image_list
-from fcos_core import layers as L
-from fcos_core.utils import cv2_util
+from fcos.core.data.datasets.evaluation import evaluate
+from fcos.core.utils.timer import Timer, get_time_str
+from fcos.core.engine.inference import compute_on_dataset
+from fcos.core.modeling.roi_heads.mask_head.inference import Masker
+from fcos.core.structures.keypoint import PersonKeypoints
+from fcos.core.structures.image_list import to_image_list
+from fcos.core import layers as L
+from fcos.core.utils import cv2_util
+
 
 class Evaluator(nn.Module):
 
@@ -154,9 +154,10 @@ class Evaluator(nn.Module):
         self.masker = Masker(threshold=mask_threshold, padding=1)
 
         # used to make colors for each class
-        self.palette = torch.tensor([2 ** 25 - 1, 2 ** 15 - 1, 2 ** 21 - 1])
+        self.palette = torch.tensor([2**25 - 1, 2**15 - 1, 2**21 - 1])
         self.cpu_device = torch.device("cpu")
-        self.confidence_thresholds_for_classes = torch.tensor(confidence_thresholds_for_classes)
+        self.confidence_thresholds_for_classes = torch.tensor(
+            confidence_thresholds_for_classes)
         self.show_mask_heatmaps = show_mask_heatmaps
         self.masks_per_dim = masks_per_dim
 
@@ -175,19 +176,16 @@ class Evaluator(nn.Module):
         else:
             to_bgr_transform = T.Lambda(lambda x: x[[2, 1, 0]])
 
-        normalize_transform = T.Normalize(
-            mean=cfg.INPUT.PIXEL_MEAN, std=cfg.INPUT.PIXEL_STD
-        )
+        normalize_transform = T.Normalize(mean=cfg.INPUT.PIXEL_MEAN,
+                                          std=cfg.INPUT.PIXEL_STD)
 
-        transform = T.Compose(
-            [
-                T.ToPILImage(),
-                T.Resize(self.min_image_size),
-                T.ToTensor(),
-                to_bgr_transform,
-                normalize_transform,
-            ]
-        )
+        transform = T.Compose([
+            T.ToPILImage(),
+            T.Resize(self.min_image_size),
+            T.ToTensor(),
+            to_bgr_transform,
+            normalize_transform,
+        ])
         return transform
 
     def run_on_opencv_image(self, image, model):
@@ -204,7 +202,7 @@ class Evaluator(nn.Module):
         top_predictions = self.select_top_predictions(predictions)
 
         result = image.copy()
-        if self.show_mask_heatmaps:
+        if self.show_mask_heatmaps and top_predictions.has_field('mask'):
             return self.create_mask_montage(result, top_predictions)
         result = self.overlay_boxes(result, top_predictions)
         if self.cfg.MODEL.MASK_ON:
@@ -213,7 +211,7 @@ class Evaluator(nn.Module):
             result = self.overlay_keypoints(result, top_predictions)
         result = self.overlay_class_names(result, top_predictions)
 
-        return result
+        return result, top_predictions
 
     def compute_prediction(self, original_image, model):
         """
@@ -229,7 +227,8 @@ class Evaluator(nn.Module):
         image = self.transforms(original_image)
         # convert to an ImageList, padded so that it is divisible by
         # cfg.DATALOADER.SIZE_DIVISIBILITY
-        image_list = to_image_list(image, self.cfg.DATALOADER.SIZE_DIVISIBILITY)
+        image_list = to_image_list(image,
+                                   self.cfg.DATALOADER.SIZE_DIVISIBILITY)
         image_list = image_list.to(self.device)
         # compute predictions
         with torch.no_grad():
@@ -268,7 +267,8 @@ class Evaluator(nn.Module):
         """
         scores = predictions.get_field("scores")
         labels = predictions.get_field("labels")
-        thresholds = self.confidence_thresholds_for_classes[(labels - 1).long()]
+        thresholds = self.confidence_thresholds_for_classes[(labels -
+                                                             1).long()]
         keep = torch.nonzero(scores > thresholds).squeeze(1)
         predictions = predictions[keep]
         scores = predictions.get_field("scores")
@@ -300,9 +300,8 @@ class Evaluator(nn.Module):
         for box, color in zip(boxes, colors):
             box = box.to(torch.int64)
             top_left, bottom_right = box[:2].tolist(), box[2:].tolist()
-            image = cv2.rectangle(
-                image, tuple(top_left), tuple(bottom_right), tuple(color), 2
-            )
+            image = cv2.rectangle(image, tuple(top_left), tuple(bottom_right),
+                                  tuple(color), 2)
 
         return image
 
@@ -324,8 +323,7 @@ class Evaluator(nn.Module):
         for mask, color in zip(masks, colors):
             thresh = mask[0, :, :, None]
             contours, hierarchy = cv2_util.findContours(
-                thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
-            )
+                thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             image = cv2.drawContours(image, contours, -1, color, 3)
 
         composite = image
@@ -353,21 +351,23 @@ class Evaluator(nn.Module):
         """
         masks = predictions.get_field("mask")
         masks_per_dim = self.masks_per_dim
-        masks = L.interpolate(
-            masks.float(), scale_factor=1 / masks_per_dim
-        ).byte()
+        masks = L.interpolate(masks.float(),
+                              scale_factor=1 / masks_per_dim).byte()
         height, width = masks.shape[-2:]
-        max_masks = masks_per_dim ** 2
+        max_masks = masks_per_dim**2
         masks = masks[:max_masks]
         # handle case where we have less detections than max_masks
         if len(masks) < max_masks:
-            masks_padded = torch.zeros(max_masks, 1, height, width, dtype=torch.uint8)
-            masks_padded[: len(masks)] = masks
+            masks_padded = torch.zeros(max_masks,
+                                       1,
+                                       height,
+                                       width,
+                                       dtype=torch.uint8)
+            masks_padded[:len(masks)] = masks
             masks = masks_padded
         masks = masks.reshape(masks_per_dim, masks_per_dim, height, width)
-        result = torch.zeros(
-            (masks_per_dim * height, masks_per_dim * width), dtype=torch.uint8
-        )
+        result = torch.zeros((masks_per_dim * height, masks_per_dim * width),
+                             dtype=torch.uint8)
         for y in range(masks_per_dim):
             start_y = y * height
             end_y = (y + 1) * height
@@ -398,9 +398,8 @@ class Evaluator(nn.Module):
             x = int(round(x.item()))
             y = int(round(y.item()))
             s = template.format(label, score)
-            cv2.putText(
-                image, s, (x, y), cv2.FONT_HERSHEY_SIMPLEX, .5, (255, 255, 255), 1
-            )
+            cv2.putText(image, s, (x, y), cv2.FONT_HERSHEY_SIMPLEX, .5,
+                        (255, 255, 255), 1)
 
         return image
 
@@ -414,34 +413,28 @@ class Evaluator(nn.Module):
                   device="cuda",
                   expected_results=(),
                   expected_results_sigma_tol=4,
-                  output_folder=None
-    ):
+                  output_folder=None):
 
         # convert to a torch.device for efficiency
         device = torch.device(device)
         logger = logging.getLogger("fcos_core.inference")
         dataset = data_loader.dataset
-        logger.info("Start evaluation on {} dataset({} images).".format(dataset_name, len(dataset)))
+        logger.info("Start evaluation on {} dataset({} images).".format(
+            dataset_name, len(dataset)))
         total_timer = Timer()
         inference_timer = Timer()
         total_timer.tic()
-        predictions = compute_on_dataset(model, data_loader, device, inference_timer)
+        predictions = compute_on_dataset(model, data_loader, device,
+                                         inference_timer)
         total_time = total_timer.toc()
         total_time_str = get_time_str(total_time)
-        logger.info(
-            "Total run time: {}".format(
-                total_time_str
-            )
-        )
+        logger.info("Total run time: {}".format(total_time_str))
         total_infer_time = get_time_str(inference_timer.total_time)
-        logger.info(
-            "Model inference time: {})".format(
-                total_infer_time
-            )
-        )
+        logger.info("Model inference time: {})".format(total_infer_time))
 
         if output_folder:
-            torch.save(predictions, os.path.join(output_folder, "predictions.pth"))
+            torch.save(predictions,
+                       os.path.join(output_folder, "predictions.pth"))
 
         # convert a dict where the key is the index in a list
         image_ids = list(sorted(predictions.keys()))
@@ -484,27 +477,30 @@ def vis_keypoints(img, kps, kp_thresh=2, alpha=0.7):
     kp_mask = np.copy(img)
 
     # Draw mid shoulder / mid hip first for better visualization.
-    mid_shoulder = (
-                           kps[:2, dataset_keypoints.index('right_shoulder')] +
-                           kps[:2, dataset_keypoints.index('left_shoulder')]) / 2.0
+    mid_shoulder = (kps[:2, dataset_keypoints.index('right_shoulder')] +
+                    kps[:2, dataset_keypoints.index('left_shoulder')]) / 2.0
     sc_mid_shoulder = np.minimum(
         kps[2, dataset_keypoints.index('right_shoulder')],
         kps[2, dataset_keypoints.index('left_shoulder')])
-    mid_hip = (
-                      kps[:2, dataset_keypoints.index('right_hip')] +
-                      kps[:2, dataset_keypoints.index('left_hip')]) / 2.0
-    sc_mid_hip = np.minimum(
-        kps[2, dataset_keypoints.index('right_hip')],
-        kps[2, dataset_keypoints.index('left_hip')])
+    mid_hip = (kps[:2, dataset_keypoints.index('right_hip')] +
+               kps[:2, dataset_keypoints.index('left_hip')]) / 2.0
+    sc_mid_hip = np.minimum(kps[2, dataset_keypoints.index('right_hip')],
+                            kps[2, dataset_keypoints.index('left_hip')])
     nose_idx = dataset_keypoints.index('nose')
     if sc_mid_shoulder > kp_thresh and kps[2, nose_idx] > kp_thresh:
-        cv2.line(
-            kp_mask, tuple(mid_shoulder), tuple(kps[:2, nose_idx]),
-            color=colors[len(kp_lines)], thickness=2, lineType=cv2.LINE_AA)
+        cv2.line(kp_mask,
+                 tuple(mid_shoulder),
+                 tuple(kps[:2, nose_idx]),
+                 color=colors[len(kp_lines)],
+                 thickness=2,
+                 lineType=cv2.LINE_AA)
     if sc_mid_shoulder > kp_thresh and sc_mid_hip > kp_thresh:
-        cv2.line(
-            kp_mask, tuple(mid_shoulder), tuple(mid_hip),
-            color=colors[len(kp_lines) + 1], thickness=2, lineType=cv2.LINE_AA)
+        cv2.line(kp_mask,
+                 tuple(mid_shoulder),
+                 tuple(mid_hip),
+                 color=colors[len(kp_lines) + 1],
+                 thickness=2,
+                 lineType=cv2.LINE_AA)
 
     # Draw the keypoints.
     for l in range(len(kp_lines)):
@@ -513,17 +509,26 @@ def vis_keypoints(img, kps, kp_thresh=2, alpha=0.7):
         p1 = kps[0, i1], kps[1, i1]
         p2 = kps[0, i2], kps[1, i2]
         if kps[2, i1] > kp_thresh and kps[2, i2] > kp_thresh:
-            cv2.line(
-                kp_mask, p1, p2,
-                color=colors[l], thickness=2, lineType=cv2.LINE_AA)
+            cv2.line(kp_mask,
+                     p1,
+                     p2,
+                     color=colors[l],
+                     thickness=2,
+                     lineType=cv2.LINE_AA)
         if kps[2, i1] > kp_thresh:
-            cv2.circle(
-                kp_mask, p1,
-                radius=3, color=colors[l], thickness=-1, lineType=cv2.LINE_AA)
+            cv2.circle(kp_mask,
+                       p1,
+                       radius=3,
+                       color=colors[l],
+                       thickness=-1,
+                       lineType=cv2.LINE_AA)
         if kps[2, i2] > kp_thresh:
-            cv2.circle(
-                kp_mask, p2,
-                radius=3, color=colors[l], thickness=-1, lineType=cv2.LINE_AA)
+            cv2.circle(kp_mask,
+                       p2,
+                       radius=3,
+                       color=colors[l],
+                       thickness=-1,
+                       lineType=cv2.LINE_AA)
 
     # Blend the keypoints.
     return cv2.addWeighted(img, 1.0 - alpha, kp_mask, alpha, 0)

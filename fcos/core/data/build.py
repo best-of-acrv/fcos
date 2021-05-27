@@ -105,7 +105,11 @@ def make_batch_data_sampler(dataset,
     return batch_sampler
 
 
-def make_data_loader(cfg, is_train=True, is_distributed=False, start_iter=0):
+def make_data_loader(cfg,
+                     is_train=True,
+                     is_distributed=False,
+                     start_iter=0,
+                     datasets_dir=None):
     num_gpus = get_world_size()
     if is_train:
         images_per_batch = cfg.SOLVER.IMS_PER_BATCH
@@ -146,6 +150,9 @@ def make_data_loader(cfg, is_train=True, is_distributed=False, start_iter=0):
     paths_catalog = import_file("fcos_core.config.paths_catalog",
                                 cfg.PATHS_CATALOG, True)
     DatasetCatalog = paths_catalog.DatasetCatalog
+    if datasets_dir is not None:
+        DatasetCatalog.DATA_DIR = datasets_dir
+
     dataset_list = cfg.DATASETS.TRAIN if is_train else cfg.DATASETS.TEST
 
     # If bbox aug is enabled in testing, simply set transforms to None and we will apply transforms later

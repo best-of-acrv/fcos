@@ -1,3 +1,4 @@
+import acrv_datasets
 import numpy as np
 import os
 import PIL.Image as Image
@@ -38,7 +39,7 @@ PRETRAINED_MODELS = {
 
 class Fcos(object):
     # TODO add dataset list
-    DATASETS = []
+    DATASETS = ['coco/minival2014']
 
     def __init__(
             self,
@@ -88,10 +89,23 @@ class Fcos(object):
 
     def evaluate(self,
                  *,
+                 dataset_name=None,
                  dataset_dir=None,
                  output_directory='./eval_output',
                  output_images=False):
-        # TODO merge from eval.py
+        # Perform argument validation
+        if dataset_name is not None:
+            dataset_name = _sanitise_arg(dataset_name, 'dataset_name',
+                                         Fcos.DATASETS)
+
+        # Load in the dataset
+        cfg.defrost()
+        cfg.DATASETS.TEST = ('coco/minival2014',)
+        cfg.freeze()
+        data_loader = _load_datasets(dataset_name, dataset_dir)
+
+        # Perform the requested evaluation
+
         pass
 
     def predict(self,
@@ -132,6 +146,23 @@ class Fcos(object):
         dataset_name = _sanitise_arg(dataset_name, 'dataset_name',
                                      Fcos.DATASETS)
         pass
+
+
+def _load_datasets(dataset_dir, is_train=False, quiet=False):
+    # Print some verbose information
+    if not quiet:
+        print("\nGETTING DATASET:")
+    if dataset_dir is None:
+        # TODO translate voc into all the required datasets (i.e. this
+        # should handle multiple dataset_dirs)
+        dataset_dir = acrv_datasets.get_datasets_directory()
+    if not quiet:
+        print("Using 'dataset_dir': %s" % dataset_dir)
+
+    return make_data_loader(cfg,
+                            datasets_dir=dataset_dir,
+                            is_train=is_train,
+                            is_distributed=False)
 
 
 def _load_pretrained(pretrained_name, checkpointer):

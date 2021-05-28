@@ -99,14 +99,26 @@ class Fcos(object):
                                          Fcos.DATASETS)
 
         # Load in the dataset
-        cfg.defrost()
-        cfg.DATASETS.TEST = ('coco/minival2014',)
-        cfg.freeze()
-        data_loader = _load_datasets(dataset_name, dataset_dir)
+        # TODO REMOVE THIS HACK!
+        if dataset_name is not None:
+            cfg.defrost()
+            cfg.DATASETS.TEST = (dataset_name,)
+            cfg.freeze()
+        data_loader = _load_datasets(dataset_dir)
 
         # Perform the requested evaluation
-
-        pass
+        e = Evaluator(cfg)
+        e.inference(
+            self.model,
+            data_loader[0],
+            dataset_name=cfg.DATASETS.TEST[0],
+            iou_types=('bbox',),
+            box_only=(False if cfg.MODEL.FCOS_ON or cfg.MODEL.RETINANET_ON else
+                      cfg.MODEL.RPN_ONLY),
+            device=cfg.MODEL.DEVICE,
+            expected_results=cfg.TEST.EXPECTED_RESULTS,
+            expected_results_sigma_tol=cfg.TEST.EXPECTED_RESULTS_SIGMA_TOL,
+            output_folder=output_directory)
 
     def predict(self,
                 *,

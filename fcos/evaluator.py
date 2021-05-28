@@ -414,6 +414,9 @@ class Evaluator(nn.Module):
                   expected_results=(),
                   expected_results_sigma_tol=4,
                   output_folder=None):
+        # Ensure output folder exists
+        if output_folder is not None:
+            os.makedirs(output_folder, exist_ok=True)
 
         # convert to a torch.device for efficiency
         device = torch.device(device)

@@ -9,12 +9,11 @@ def get_lr(optimizer):
 
 class Trainer(nn.Module):
 
-    def __init__(self, optimizer, scheduler, checkpointer, device,
-                 checkpoint_period, arguments):
+    def __init__(self, checkpointer, device, checkpoint_period, arguments):
         super().__init__()
 
-        self.optimizer = optimizer
-        self.scheduler = scheduler
+        self.optimizer = checkpointer.optimizer
+        self.scheduler = checkpointer.scheduler
         self.checkpointer = checkpointer
         self.device = device
         self.checkpoint_period = checkpoint_period

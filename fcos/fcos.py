@@ -48,8 +48,8 @@ class Fcos(object):
             config_file=config_by_name('FCOS_imprv_dcnv2_R_50_FPN_1x.yaml'),
             config_list=None,
             gpu_id=0,
+            load_checkpoint=None,
             load_pretrained='FCOS_imprv_dcnv2_R_50_FPN_1x',
-            load_snapshot=None,
             model_seed=0,
             name='fcos'):
         # Apply sanitised args
@@ -64,7 +64,7 @@ class Fcos(object):
                                               'load_pretrained',
                                               PRETRAINED_MODELS.keys(),
                                               lower=False))
-        self.load_snapshot = load_snapshot
+        self.load_checkpoint = os.path.expanduser(load_checkpoint)
 
         # Try setting up GPU integration
         os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
@@ -83,9 +83,9 @@ class Fcos(object):
         self.checkpointer = DetectronCheckpointer(cfg, self.model)
         print("\nLOADING PRE-TRAINED WEIGHTS INTO DETECTRON MODEL:")
         _load_pretrained(self.load_pretrained, self.checkpointer)
-        if self.load_snapshot:
+        if self.load_checkpoint:
             print("\nLOADING SNAPSHOT INTO DETECTRON MODEL:")
-            _load_snapshot(self.load_snapshot, self.checkpointer)
+            _load_checkpoint(self.load_checkpoint, self.checkpointer)
         self.model.to(cfg.MODEL.DEVICE)
 
     def evaluate(self,
@@ -192,16 +192,16 @@ class Fcos(object):
         data_loader = _load_datasets(dataset_dir, is_train=True)
         o = make_optimizer(cfg, self.model)
         s = make_lr_scheduler(cfg, o)
-        c = DetectronCheckpointer(cfg,
-                                  model=self.model,
-                                  optimizer=o,
-                                  scheduler=s,
-                                  save_dir=cfg.OUTPUT_DIR,
-                                  save_to_disk=True)
+        self.checkpointer.cfg = cfg
+        self.checkpointer.optimizer = make_optimizer(cfg, self.model)
+        self.checkpointer.scheduler = make_lr_scheduler(
+            cfg, self.checkpointer.optimizer)
+        self.checkpointer.save_dir = cfg.OUTPUT_DIR
+        self.checkpointer.save_to_disk = True
 
         # Start a model trainer
-        return Trainer(o, s, c, cfg.MODEL.DEVICE, cfg.SOLVER.CHECKPOINT_PERIOD,
-                       {
+        return Trainer(self.checkpointer, cfg.MODEL.DEVICE,
+                       cfg.SOLVER.CHECKPOINT_PERIOD, {
                            'iteration': 0
                        }).train(self.model, data_loader)
 
@@ -223,13 +223,13 @@ def _load_datasets(dataset_dir, is_train=False, quiet=False):
                             is_distributed=False)
 
 
+def _load_checkpoint(checkpoint_path, checkpointer):
+    checkpointer.load(checkpoint_path)
+
+
 def _load_pretrained(pretrained_name, checkpointer):
     checkpointer.load(
         download_model(pretrained_name, PRETRAINED_MODELS[pretrained_name]))
-
-
-def _load_snapshot(snapshot_path, checkpointer):
-    checkpointer.load(snapshot_path)
 
 
 def _sanitise_arg(value, name, supported_list, lower=True):

@@ -98,14 +98,22 @@ class Fcos(object):
             dataset_name = _sanitise_arg(dataset_name, 'dataset_name',
                                          Fcos.DATASETS)
 
-        # Load in the dataset
+        # Apply configuration settings
+        cfg.defrost()
         if dataset_name is not None:
-            cfg.defrost()
             cfg.DATASETS.TEST = (dataset_name,)
-            cfg.freeze()
-        data_loader = _load_datasets(dataset_dir)
+        cfg.OUTPUT_DIR = output_directory
+        cfg.freeze()
+
+        # Start the logging service
+        print("\nEVALUATING PERFORMANCE:")
+        l = setup_logger("fcos_core", cfg.OUTPUT_DIR, distributed_rank=0)
+        l.info("Dumping env info (may take some time):")
+        l.info("\n" + collect_env_info())
+        l.info("Running with config:\n%s" % cfg)
 
         # Perform the requested evaluation
+        data_loader = _load_datasets(dataset_dir)
         e = Evaluator(cfg)
         e.inference(
             self.model,
@@ -117,7 +125,7 @@ class Fcos(object):
             device=cfg.MODEL.DEVICE,
             expected_results=cfg.TEST.EXPECTED_RESULTS,
             expected_results_sigma_tol=cfg.EST.EXPECTED_RESULTS_SIGMA_TOL,
-            output_folder=output_directory)
+            output_folder=cfg.OUTPUT_DIR)
 
     def predict(self,
                 *,
@@ -151,6 +159,7 @@ class Fcos(object):
 
     def train(self,
               *,
+              checkpoint_period=None,
               dataset_name=None,
               dataset_dir=None,
               output_directory=os.path.expanduser('~/fcos-output')):
@@ -163,9 +172,12 @@ class Fcos(object):
 
         # Apply configuration settings
         cfg.defrost()
-        # TODO REMOVE HACKS
-        cfg.SOLVER.CHECKPOINT_PERIOD = 60
+        if checkpoint_period is not None:
+            cfg.SOLVER.CHECKPOINT_PERIOD = checkpoint_period
+        # TODO REMOVE HACK
         cfg.DATASETS.TRAIN = ('coco/train2014', 'coco/valminusminival2014')
+        if dataset_name is not None:
+            cfg.DATASETS.TRAIN = (dataset_name,)
         cfg.OUTPUT_DIR = output_directory
         cfg.freeze()
 
@@ -176,14 +188,8 @@ class Fcos(object):
         l.info("\n" + collect_env_info())
         l.info("Running with config:\n%s" % cfg)
 
-        # Load in the requested datasets
-        if dataset_name is not None:
-            cfg.defrost()
-            cfg.DATASETS.TRAIN = (dataset_name,)
-            cfg.freeze()
-        data_loader = _load_datasets(dataset_dir, is_train=True)
-
         # Configure the model for training
+        data_loader = _load_datasets(dataset_dir, is_train=True)
         o = make_optimizer(cfg, self.model)
         s = make_lr_scheduler(cfg, o)
         c = DetectronCheckpointer(cfg,

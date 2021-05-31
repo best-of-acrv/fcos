@@ -161,10 +161,20 @@ class Fcos(object):
         if not os.path.exists(output_directory):
             os.makedirs(output_directory, exist_ok=True)
 
-        # TODO REMOVE HACK
+        # Apply configuration settings
         cfg.defrost()
+        # TODO REMOVE HACKS
+        cfg.SOLVER.CHECKPOINT_PERIOD = 60
         cfg.DATASETS.TRAIN = ('coco/train2014', 'coco/valminusminival2014')
+        cfg.OUTPUT_DIR = output_directory
         cfg.freeze()
+
+        # Start the logging service
+        print("\nPERFORMING TRAINING:")
+        l = setup_logger("fcos_core", cfg.OUTPUT_DIR, distributed_rank=0)
+        l.info("Dumping env info (may take some time):")
+        l.info("\n" + collect_env_info())
+        l.info("Running with config:\n%s" % cfg)
 
         # Load in the requested datasets
         if dataset_name is not None:
@@ -180,10 +190,10 @@ class Fcos(object):
                                   model=self.model,
                                   optimizer=o,
                                   scheduler=s,
-                                  save_dir=output_directory,
+                                  save_dir=cfg.OUTPUT_DIR,
                                   save_to_disk=True)
+
         # Start a model trainer
-        print("\nPERFORMING TRAINING:")
         return Trainer(o, s, c, cfg.MODEL.DEVICE, cfg.SOLVER.CHECKPOINT_PERIOD,
                        {
                            'iteration': 0

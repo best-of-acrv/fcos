@@ -16,6 +16,7 @@ from .core.utils.miscellaneous import mkdir
 from .evaluator import Evaluator
 from .helpers import config_by_name
 from .helpers import download_model
+from .trainer import Trainer
 
 PRETRAINED_MODELS = {
     'FCOS_imprv_R_50_FPN_1x':
@@ -91,15 +92,13 @@ class Fcos(object):
                  *,
                  dataset_name=None,
                  dataset_dir=None,
-                 output_directory='./eval_output',
-                 output_images=False):
+                 output_directory='./eval_output'):
         # Perform argument validation
         if dataset_name is not None:
             dataset_name = _sanitise_arg(dataset_name, 'dataset_name',
                                          Fcos.DATASETS)
 
         # Load in the dataset
-        # TODO REMOVE THIS HACK!
         if dataset_name is not None:
             cfg.defrost()
             cfg.DATASETS.TEST = (dataset_name,)
@@ -117,7 +116,7 @@ class Fcos(object):
                       cfg.MODEL.RPN_ONLY),
             device=cfg.MODEL.DEVICE,
             expected_results=cfg.TEST.EXPECTED_RESULTS,
-            expected_results_sigma_tol=cfg.TEST.EXPECTED_RESULTS_SIGMA_TOL,
+            expected_results_sigma_tol=cfg.EST.EXPECTED_RESULTS_SIGMA_TOL,
             output_folder=output_directory)
 
     def predict(self,
@@ -151,13 +150,44 @@ class Fcos(object):
         return out_boxes
 
     def train(self,
-              dataset_name,
               *,
+              dataset_name=None,
+              dataset_dir=None,
               output_directory=os.path.expanduser('~/fcos-output')):
         # Perform argument validation / set defaults
-        dataset_name = _sanitise_arg(dataset_name, 'dataset_name',
-                                     Fcos.DATASETS)
-        pass
+        if dataset_name is not None:
+            dataset_name = _sanitise_arg(dataset_name, 'dataset_name',
+                                         Fcos.DATASETS)
+        if not os.path.exists(output_directory):
+            os.makedirs(output_directory, exist_ok=True)
+
+        # TODO REMOVE HACK
+        cfg.defrost()
+        cfg.DATASETS.TRAIN = ('coco/train2014', 'coco/valminusminival2014')
+        cfg.freeze()
+
+        # Load in the requested datasets
+        if dataset_name is not None:
+            cfg.defrost()
+            cfg.DATASETS.TRAIN = (dataset_name,)
+            cfg.freeze()
+        data_loader = _load_datasets(dataset_dir, is_train=True)
+
+        # Configure the model for training
+        o = make_optimizer(cfg, self.model)
+        s = make_lr_scheduler(cfg, o)
+        c = DetectronCheckpointer(cfg,
+                                  model=self.model,
+                                  optimizer=o,
+                                  scheduler=s,
+                                  save_dir=output_directory,
+                                  save_to_disk=True)
+        # Start a model trainer
+        print("\nPERFORMING TRAINING:")
+        return Trainer(o, s, c, cfg.MODEL.DEVICE, cfg.SOLVER.CHECKPOINT_PERIOD,
+                       {
+                           'iteration': 0
+                       }).train(self.model, data_loader)
 
 
 def _load_datasets(dataset_dir, is_train=False, quiet=False):

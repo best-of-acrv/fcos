@@ -1,12 +1,16 @@
 import torch.nn as nn
-from fcos_core.engine.trainer import do_train
+from .core.engine.trainer import do_train
+
 
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:
         return param_group['lr']
 
+
 class Trainer(nn.Module):
-    def __init__(self, optimizer, scheduler, checkpointer, device, checkpoint_period, arguments):
+
+    def __init__(self, optimizer, scheduler, checkpointer, device,
+                 checkpoint_period, arguments):
         super().__init__()
 
         self.optimizer = optimizer
@@ -18,11 +22,6 @@ class Trainer(nn.Module):
 
     def train(self, model, data_loader):
 
-        do_train(model,
-                 data_loader,
-                 self.optimizer,
-                 self.scheduler,
-                 self.checkpointer,
-                 self.device,
-                 self.checkpoint_period,
+        do_train(model, data_loader, self.optimizer, self.scheduler,
+                 self.checkpointer, self.device, self.checkpoint_period,
                  self.arguments)

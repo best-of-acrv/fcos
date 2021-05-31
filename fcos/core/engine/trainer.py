@@ -6,8 +6,8 @@ import time
 import torch
 import torch.distributed as dist
 
-from fcos_core.utils.comm import get_world_size, is_pytorch_1_1_0_or_later
-from fcos_core.utils.metric_logger import MetricLogger
+from ..utils.comm import get_world_size, is_pytorch_1_1_0_or_later
+from ..utils.metric_logger import MetricLogger
 
 
 def reduce_loss_dict(loss_dict):
@@ -91,22 +91,19 @@ def do_train(
 
         if iteration % 20 == 0 or iteration == max_iter:
             logger.info(
-                meters.delimiter.join(
-                    [
-                        "eta: {eta}",
-                        "iter: {iter}",
-                        "{meters}",
-                        "lr: {lr:.6f}",
-                        "max mem: {memory:.0f}",
-                    ]
-                ).format(
+                meters.delimiter.join([
+                    "eta: {eta}",
+                    "iter: {iter}",
+                    "{meters}",
+                    "lr: {lr:.6f}",
+                    "max mem: {memory:.0f}",
+                ]).format(
                     eta=eta_string,
                     iter=iteration,
                     meters=str(meters),
                     lr=optimizer.param_groups[0]["lr"],
                     memory=torch.cuda.max_memory_allocated() / 1024.0 / 1024.0,
-                )
-            )
+                ))
         if iteration % checkpoint_period == 0:
             checkpointer.save("model_{:07d}".format(iteration), **arguments)
         if iteration == max_iter:
@@ -114,8 +111,5 @@ def do_train(
 
     total_training_time = time.time() - start_training_time
     total_time_str = str(datetime.timedelta(seconds=total_training_time))
-    logger.info(
-        "Total training time: {} ({:.4f} s / it)".format(
-            total_time_str, total_training_time / (max_iter)
-        )
-    )
+    logger.info("Total training time: {} ({:.4f} s / it)".format(
+        total_time_str, total_training_time / (max_iter)))

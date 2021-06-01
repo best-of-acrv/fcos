@@ -18,25 +18,6 @@ from .helpers import config_by_name
 from .helpers import download_model
 from .trainer import Trainer
 
-PRETRAINED_MODELS = {
-    'FCOS_imprv_R_50_FPN_1x':
-        'https://cloudstor.aarnet.edu.au/plus/s/ZSAqNJB96hA71Yf/download',
-    'FCOS_imprv_dcnv2_R_50_FPN_1x':
-        'https://cloudstor.aarnet.edu.au/plus/s/plKgHuykjiilzWr/download',
-    'FCOS_imprv_R_101_FPN_2x':
-        'https://cloudstor.aarnet.edu.au/plus/s/hTeMuRa4pwtCemq/download',
-    'FCOS_imprv_dcnv2_R_101_FPN_2x':
-        'https://cloudstor.aarnet.edu.au/plus/s/xq2Ll7s0hpaQycO/download',
-    'FCOS_imprv_X_101_32x8d_FPN_2x':
-        'https://cloudstor.aarnet.edu.au/plus/s/WZ0i7RZW5BRpJu6/download',
-    'FCOS_imprv_dcnv2_X_101_32x8d_FPN_2x':
-        'https://cloudstor.aarnet.edu.au/plus/s/08UK0OP67TogLCU/download',
-    'FCOS_imprv_X_101_64x4d_FPN_2x':
-        'https://cloudstor.aarnet.edu.au/plus/s/rKOJtwvJwcKVOz8/download',
-    'FCOS_imprv_dcnv2_X_101_64x4d_FPN_2x':
-        'https://cloudstor.aarnet.edu.au/plus/s/jdtVmG7MlugEXB7/download'
-}
-
 
 class Fcos(object):
     # TODO add rest of datasets from ./core/config/paths_catalog.py
@@ -47,6 +28,25 @@ class Fcos(object):
         'coco/val2014': [],
         'coco/minival2014': ['coco/val2014'],
         'coco/valminusminival2014': ['coco/val2014'],
+    }
+
+    PRETRAINED_MODELS = {
+        'FCOS_imprv_R_50_FPN_1x':
+            'https://cloudstor.aarnet.edu.au/plus/s/ZSAqNJB96hA71Yf/download',
+        'FCOS_imprv_dcnv2_R_50_FPN_1x':
+            'https://cloudstor.aarnet.edu.au/plus/s/plKgHuykjiilzWr/download',
+        'FCOS_imprv_R_101_FPN_2x':
+            'https://cloudstor.aarnet.edu.au/plus/s/hTeMuRa4pwtCemq/download',
+        'FCOS_imprv_dcnv2_R_101_FPN_2x':
+            'https://cloudstor.aarnet.edu.au/plus/s/xq2Ll7s0hpaQycO/download',
+        'FCOS_imprv_X_101_32x8d_FPN_2x':
+            'https://cloudstor.aarnet.edu.au/plus/s/WZ0i7RZW5BRpJu6/download',
+        'FCOS_imprv_dcnv2_X_101_32x8d_FPN_2x':
+            'https://cloudstor.aarnet.edu.au/plus/s/08UK0OP67TogLCU/download',
+        'FCOS_imprv_X_101_64x4d_FPN_2x':
+            'https://cloudstor.aarnet.edu.au/plus/s/rKOJtwvJwcKVOz8/download',
+        'FCOS_imprv_dcnv2_X_101_64x4d_FPN_2x':
+            'https://cloudstor.aarnet.edu.au/plus/s/jdtVmG7MlugEXB7/download'
     }
 
     def __init__(
@@ -69,7 +69,7 @@ class Fcos(object):
         self.load_pretrained = (None if load_pretrained is None else
                                 _sanitise_arg(load_pretrained,
                                               'load_pretrained',
-                                              PRETRAINED_MODELS.keys(),
+                                              Fcos.PRETRAINED_MODELS.keys(),
                                               lower=False))
         self.load_checkpoint = os.path.expanduser(load_checkpoint)
 
@@ -183,8 +183,6 @@ class Fcos(object):
         cfg.defrost()
         if checkpoint_period is not None:
             cfg.SOLVER.CHECKPOINT_PERIOD = checkpoint_period
-        # TODO REMOVE HACK
-        cfg.DATASETS.TRAIN = ('coco/train2014', 'coco/valminusminival2014')
         if dataset_name is not None:
             cfg.DATASETS.TRAIN = (dataset_name,)
         cfg.OUTPUT_DIR = output_directory
@@ -246,7 +244,8 @@ def _load_checkpoint(checkpoint_path, checkpointer):
 
 def _load_pretrained(pretrained_name, checkpointer):
     checkpointer.load(
-        download_model(pretrained_name, PRETRAINED_MODELS[pretrained_name]))
+        download_model(pretrained_name,
+                       Fcos.PRETRAINED_MODELS[pretrained_name]))
 
 
 def _sanitise_arg(value, name, supported_list, lower=True):

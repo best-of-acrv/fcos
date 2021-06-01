@@ -20,8 +20,8 @@ MODEL:
     CENTER_SAMPLING_RADIUS: 1.5
     IOU_LOSS_TYPE: "giou"
 DATASETS:
-  TRAIN: ("coco_2014_train", "coco_2014_valminusminival")
-  TEST: ("coco_2014_minival",)
+  TRAIN: ("coco/train2014", "coco/valminusminival2014")
+  TEST: ("coco/minival2014",)
 INPUT:
   MIN_SIZE_RANGE_TRAIN: (640, 800)
   MAX_SIZE_TRAIN: 1333
@@ -36,3 +36,4 @@ SOLVER:
   MAX_ITER: 720000
   IMS_PER_BATCH: 4
   WARMUP_METHOD: "constant"
+

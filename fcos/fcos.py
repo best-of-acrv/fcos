@@ -32,21 +32,21 @@ class Fcos(object):
 
     PRETRAINED_MODELS = {
         'FCOS_imprv_R_50_FPN_1x':
-            'https://cloudstor.aarnet.edu.au/plus/s/ZSAqNJB96hA71Yf/download',
+            'https://cloudstor.aarnet.edu.au/plus/s/6yBHy9eXMp8kxXE/download',
         'FCOS_imprv_dcnv2_R_50_FPN_1x':
-            'https://cloudstor.aarnet.edu.au/plus/s/plKgHuykjiilzWr/download',
+            'https://cloudstor.aarnet.edu.au/plus/s/kWpZoUvgTpn7u6A/download',
         'FCOS_imprv_R_101_FPN_2x':
-            'https://cloudstor.aarnet.edu.au/plus/s/hTeMuRa4pwtCemq/download',
+            'https://cloudstor.aarnet.edu.au/plus/s/jgfmAliI86BSzHc/download',
         'FCOS_imprv_dcnv2_R_101_FPN_2x':
-            'https://cloudstor.aarnet.edu.au/plus/s/xq2Ll7s0hpaQycO/download',
+            'https://cloudstor.aarnet.edu.au/plus/s/Z8GKgxTbVzQKd9D/download',
         'FCOS_imprv_X_101_32x8d_FPN_2x':
-            'https://cloudstor.aarnet.edu.au/plus/s/WZ0i7RZW5BRpJu6/download',
+            'https://cloudstor.aarnet.edu.au/plus/s/RmpDdqJRNFy6eDm/download',
         'FCOS_imprv_dcnv2_X_101_32x8d_FPN_2x':
-            'https://cloudstor.aarnet.edu.au/plus/s/08UK0OP67TogLCU/download',
+            'https://cloudstor.aarnet.edu.au/plus/s/feJzyj4OgYl3vlq/download',
         'FCOS_imprv_X_101_64x4d_FPN_2x':
-            'https://cloudstor.aarnet.edu.au/plus/s/rKOJtwvJwcKVOz8/download',
+            'https://cloudstor.aarnet.edu.au/plus/s/gfZWtxG8qyFBrtf/download',
         'FCOS_imprv_dcnv2_X_101_64x4d_FPN_2x':
-            'https://cloudstor.aarnet.edu.au/plus/s/jdtVmG7MlugEXB7/download'
+            'https://cloudstor.aarnet.edu.au/plus/s/eqbxb8owOu5J97O/download'
     }
 
     def __init__(

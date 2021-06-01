@@ -39,8 +39,15 @@ PRETRAINED_MODELS = {
 
 
 class Fcos(object):
-    # TODO add dataset list
-    DATASETS = ['coco/minival2014']
+    # TODO add rest of datasets from ./core/config/paths_catalog.py
+    DATASETS = {
+        'coco/train2017': [],
+        'coco/val2017': [],
+        'coco/train2014': [],
+        'coco/val2014': [],
+        'coco/minival2014': ['coco/val2014'],
+        'coco/valminusminival2014': ['coco/val2014'],
+    }
 
     def __init__(
             self,
@@ -96,7 +103,7 @@ class Fcos(object):
         # Perform argument validation
         if dataset_name is not None:
             dataset_name = _sanitise_arg(dataset_name, 'dataset_name',
-                                         Fcos.DATASETS)
+                                         Fcos.DATASETS.keys())
 
         # Apply configuration settings
         cfg.defrost()
@@ -104,6 +111,9 @@ class Fcos(object):
             cfg.DATASETS.TEST = (dataset_name,)
         cfg.OUTPUT_DIR = output_directory
         cfg.freeze()
+
+        # Load evaluation datasets
+        data_loader = _load_datasets(dataset_dir, is_train=False)
 
         # Start the logging service
         print("\nEVALUATING PERFORMANCE:")
@@ -113,7 +123,6 @@ class Fcos(object):
         l.info("Running with config:\n%s" % cfg)
 
         # Perform the requested evaluation
-        data_loader = _load_datasets(dataset_dir)
         e = Evaluator(cfg)
         e.inference(
             self.model,
@@ -166,7 +175,7 @@ class Fcos(object):
         # Perform argument validation / set defaults
         if dataset_name is not None:
             dataset_name = _sanitise_arg(dataset_name, 'dataset_name',
-                                         Fcos.DATASETS)
+                                         Fcos.DATASETS.keys())
         if not os.path.exists(output_directory):
             os.makedirs(output_directory, exist_ok=True)
 
@@ -181,23 +190,21 @@ class Fcos(object):
         cfg.OUTPUT_DIR = output_directory
         cfg.freeze()
 
-        # Start the logging service
-        print("\nPERFORMING TRAINING:")
-        l = setup_logger("fcos_core", cfg.OUTPUT_DIR, distributed_rank=0)
-        l.info("Dumping env info (may take some time):")
-        l.info("\n" + collect_env_info())
-        l.info("Running with config:\n%s" % cfg)
-
         # Configure the model for training
         data_loader = _load_datasets(dataset_dir, is_train=True)
-        o = make_optimizer(cfg, self.model)
-        s = make_lr_scheduler(cfg, o)
         self.checkpointer.cfg = cfg
         self.checkpointer.optimizer = make_optimizer(cfg, self.model)
         self.checkpointer.scheduler = make_lr_scheduler(
             cfg, self.checkpointer.optimizer)
         self.checkpointer.save_dir = cfg.OUTPUT_DIR
         self.checkpointer.save_to_disk = True
+
+        # Start the logging service
+        print("\nPERFORMING TRAINING:")
+        l = setup_logger("fcos_core", cfg.OUTPUT_DIR, distributed_rank=0)
+        l.info("Dumping env info (may take some time):")
+        l.info("\n" + collect_env_info())
+        l.info("Running with config:\n%s" % cfg)
 
         # Start a model trainer
         return Trainer(self.checkpointer, cfg.MODEL.DEVICE,
@@ -211,12 +218,22 @@ def _load_datasets(dataset_dir, is_train=False, quiet=False):
     if not quiet:
         print("\nGETTING DATASET:")
     if dataset_dir is None:
-        # TODO translate voc into all the required datasets (i.e. this
-        # should handle multiple dataset_dirs)
         dataset_dir = acrv_datasets.get_datasets_directory()
     if not quiet:
         print("Using 'dataset_dir': %s" % dataset_dir)
 
+    # Build a list of requested datasets (including dependencies), and ensure
+    # they are all available locally
+    datasets = [
+        [d] + Fcos.DATASETS[d]
+        for d in (cfg.DATASETS.TRAIN if is_train else cfg.DATASETS.TEST)
+    ]
+    acrv_datasets.get_datasets([d for ds in datasets for d in ds],
+                               datasets_directory=dataset_dir)
+    if not quiet:
+        print("\n")
+
+    # Return a data loader for the requested dataset
     return make_data_loader(cfg,
                             datasets_dir=dataset_dir,
                             is_train=is_train,

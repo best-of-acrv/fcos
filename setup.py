@@ -1,78 +1,67 @@
-#!/usr/bin/env python
-# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
-
-import glob
+from glob import glob
 import os
-
+from pkg_resources import resource_filename
+from setuptools import find_packages, setup
 import torch
-from setuptools import find_packages
-from setuptools import setup
-from torch.utils.cpp_extension import CUDA_HOME
-from torch.utils.cpp_extension import CppExtension
-from torch.utils.cpp_extension import CUDAExtension
-
-
-requirements = [
-    "torchvision",
-    "ninja",
-    "yacs",
-    "cython",
-    "matplotlib",
-    "tqdm",
-    "opencv-python",
-    "scikit-image"
-]
+import torch.utils.cpp_extension as tcpp
 
 
 def get_extensions():
-    extensions_dir = os.path.join("fcos_core", "csrc")
+    # root = resource_filename('fcos', os.path.join('core', 'csrc'))
+    root = os.path.join('fcos', 'core', 'csrc')
+    is_cuda = ((torch.cuda.is_available() and tcpp.CUDA_HOME is not None) or
+               os.getenv("FORCE_CUDA", "0") == "1")
 
-    main_file = glob.glob(os.path.join(extensions_dir, "*.cpp"))
-    source_cpu = glob.glob(os.path.join(extensions_dir, "cpu", "*.cpp"))
-    source_cuda = glob.glob(os.path.join(extensions_dir, "cuda", "*.cu"))
-    sources = main_file + source_cpu
+    ext = tcpp.CUDAExtension if is_cuda else tcpp.CppExtension
 
-    extension = CppExtension
+    source_main = glob(os.path.join(root, '*.cpp'))[0]
+    sources_cpu = glob(os.path.join(root, 'cpu', '*.cpp'))
+    sources = [source_main] + sources_cpu + (glob(
+        os.path.join(root, 'cuda', '*.cu')) if is_cuda else [])
 
-    extra_compile_args = {"cxx": []}
-    define_macros = []
+    define_macros = [("WITH_CUDA", None)] if is_cuda else []
+    extra_compile_args = {
+        "cxx": [],
+        **({
+            "nvcc": [
+                "-DCUDA_HAS_FP16=1",
+                "-D__CUDA_NO_HALF_OPERATORS__",
+                "-D__CUDA_NO_HALF_CONVERSIONS__",
+                "-D__CUDA_NO_HALF2_OPERATORS__",
+            ]
+        } if is_cuda else {})
+    }
 
-    if (torch.cuda.is_available() and CUDA_HOME is not None) or os.getenv("FORCE_CUDA", "0") == "1":
-        extension = CUDAExtension
-        sources += source_cuda
-        define_macros += [("WITH_CUDA", None)]
-        extra_compile_args["nvcc"] = [
-            "-DCUDA_HAS_FP16=1",
-            "-D__CUDA_NO_HALF_OPERATORS__",
-            "-D__CUDA_NO_HALF_CONVERSIONS__",
-            "-D__CUDA_NO_HALF2_OPERATORS__",
-        ]
-
-    include_dirs = [extensions_dir]
-
-    ext_modules = [
-        extension(
-            "fcos_core._C",
+    return [
+        ext("fcos.core._C",
             sources,
-            include_dirs=include_dirs,
+            include_dirs=[root],
             define_macros=define_macros,
-            extra_compile_args=extra_compile_args
-        )
+            extra_compile_args=extra_compile_args)
     ]
 
-    return ext_modules
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 
-setup(
-    name="fcos",
-    version="0.1.9",
-    author="Zhi Tian",
-    url="https://github.com/tianzhi0549/FCOS",
-    description="FCOS object detector in pytorch",
-    scripts=["fcos/bin/fcos"],
-    packages=find_packages(exclude=("configs", "tests",)),
-    install_requires=requirements,
-    ext_modules=get_extensions(),
-    cmdclass={"build_ext": torch.utils.cpp_extension.BuildExtension},
-    include_package_data=True,
-)
+setup(name='fcos',
+      version='0.9.0',
+      author='Ben Talbot',
+      author_email='b.talbot@qut.edu.au',
+      description='Fully convolutional one-stage object detection (FCOS)',
+      long_description=long_description,
+      long_description_content_type='text/markdown',
+      packages=find_packages(),
+      package_data={'fcos': ['configs/*.yaml']},
+      install_requires=[
+          'acrv_datasets', 'numpy', 'opencv-python', 'pycocotools',
+          'torch==1.4.*', 'torchvision==0.5.*', 'yacs'
+      ],
+      ext_modules=get_extensions(),
+      cmdclass={"build_ext": tcpp.BuildExtension},
+      classifiers=(
+          "Development Status :: 4 - Beta",
+          "Programming Language :: Python :: 3",
+          "License :: OSI Approved :: BSD License",
+          "Operating System :: OS Independent",
+      ))

@@ -62,15 +62,13 @@ You can see a list of our Conda dependencies in the [FCOS feedstock's recipe](ht
 
 Before installing via `pip`, you must have the following system dependencies installed if you want CUDA acceleration:
 
-TODO check... this may be needed for building
-
 - NVIDIA drivers
 - CUDA
 
 Then FCOS, and all its Python dependencies can be installed via:
 
 ```
-u@pc:~$ pip install refinenet
+u@pc:~$ pip install fcos
 ```
 
 TODO something about the building of custom layers with CUDA...

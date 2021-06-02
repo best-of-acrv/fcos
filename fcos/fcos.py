@@ -71,7 +71,8 @@ class Fcos(object):
                                               'load_pretrained',
                                               Fcos.PRETRAINED_MODELS.keys(),
                                               lower=False))
-        self.load_checkpoint = os.path.expanduser(load_checkpoint)
+        self.load_checkpoint = (None if load_checkpoint is None else
+                                os.path.expanduser(load_checkpoint))
 
         # Try setting up GPU integration
         os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'

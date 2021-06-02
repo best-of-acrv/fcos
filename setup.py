@@ -52,8 +52,10 @@ setup(name='fcos',
       long_description=long_description,
       long_description_content_type='text/markdown',
       packages=find_packages(),
+      package_data={'fcos': ['configs/*.yaml']},
       install_requires=[
-          'acrv_datasets', 'yacs', 'torch==1.4.*', 'torchvision==0.5.*'
+          'acrv_datasets', 'numpy', 'opencv-python', 'pycocotools',
+          'torch==1.4.*', 'torchvision==0.5.*', 'yacs'
       ],
       ext_modules=get_extensions(),
       cmdclass={"build_ext": tcpp.BuildExtension},

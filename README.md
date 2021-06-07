@@ -29,10 +29,10 @@ This repository brings the work from a number of sources together. Please see th
 
 ## Installing FCOS
 
-We offer three methods fro installing FCOS:
+We offer three methods for installing FCOS:
 
 1. [Through our Conda package](#conda): single command installs everything including system dependencies (recommended)
-2. [Through our pip package](#pip): single command installs RefineNet and Python dependences, you take care of system dependencies
+2. [Through our pip package](#pip): single command installs FCOS and Python dependences, you take care of system dependencies
 3. [Directly from source](#from-source): allows easy editing and extension of our code, but you take care of building and all dependencies
 
 ### Conda

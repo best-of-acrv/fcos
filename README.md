@@ -65,33 +65,27 @@ Before installing via `pip`, you must have the following system dependencies ins
 - NVIDIA drivers
 - CUDA
 
-Then FCOS, and all its Python dependencies can be installed via:
+Then FCOS, its custom CUDA code, and all of its Python dependencies, can be installed via:
 
 ```
 u@pc:~$ pip install fcos
 ```
 
-TODO something about the building of custom layers with CUDA...
-
 ### From source
 
-Installing from source is very similar to the `pip` method above
-
-TODO validate this statement is actually true "due to FCOS only containing Python code".
-
-Simply clone the repository, enter the directory, and install via `pip`:
+Installing from source is very similar to the `pip` method above, accept we install from a local copy. Simply clone the repository, enter the directory, and install via `pip`:
 
 ```
 u@pc:~$ pip install -e .
 ```
-
-TODO check this actually handles building of the custom layers with CUDA
 
 _Note: the editable mode flag (`-e`) is optional, but allows you to immediately use any changes you make to the code in your local Python ecosystem._
 
 We also include scripts in the `./scripts` directory to support running FCOS without any `pip` installation, but this workflow means you need to handle all system and Python dependencies manually.
 
 ## Using FCOS
+
+TODO
 
 ### FCOS from the command line
 

@@ -5,19 +5,19 @@ from setuptools import find_packages, setup
 import torch
 import torch.utils.cpp_extension as tcpp
 
+ROOT = os.path.join('fcos', 'core', 'csrc')
+
 
 def get_extensions():
-    # root = resource_filename('fcos', os.path.join('core', 'csrc'))
-    root = os.path.join('fcos', 'core', 'csrc')
     is_cuda = ((torch.cuda.is_available() and tcpp.CUDA_HOME is not None) or
                os.getenv("FORCE_CUDA", "0") == "1")
 
     ext = tcpp.CUDAExtension if is_cuda else tcpp.CppExtension
 
-    source_main = glob(os.path.join(root, '*.cpp'))[0]
-    sources_cpu = glob(os.path.join(root, 'cpu', '*.cpp'))
+    source_main = glob(os.path.join(ROOT, '*.cpp'))[0]
+    sources_cpu = glob(os.path.join(ROOT, 'cpu', '*.cpp'))
     sources = [source_main] + sources_cpu + (glob(
-        os.path.join(root, 'cuda', '*.cu')) if is_cuda else [])
+        os.path.join(ROOT, 'cuda', '*.cu')) if is_cuda else [])
 
     define_macros = [("WITH_CUDA", None)] if is_cuda else []
     extra_compile_args = {
@@ -35,7 +35,7 @@ def get_extensions():
     return [
         ext("fcos.core._C",
             sources,
-            include_dirs=[root],
+            include_dirs=[ROOT],
             define_macros=define_macros,
             extra_compile_args=extra_compile_args)
     ]
@@ -45,9 +45,10 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='fcos',
-      version='0.9.0',
+      version='0.9.1',
       author='Ben Talbot',
       author_email='b.talbot@qut.edu.au',
+      url='https://github.com/best-of-acrv/fcos',
       description='Fully convolutional one-stage object detection (FCOS)',
       long_description=long_description,
       long_description_content_type='text/markdown',

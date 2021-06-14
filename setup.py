@@ -45,7 +45,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='fcos',
-      version='0.9.1',
+      version='0.9.2',
       author='Ben Talbot',
       author_email='b.talbot@qut.edu.au',
       url='https://github.com/best-of-acrv/fcos',
@@ -55,8 +55,8 @@ setup(name='fcos',
       packages=find_packages(),
       package_data={'fcos': ['configs/*.yaml']},
       install_requires=[
-          'acrv_datasets', 'numpy', 'opencv-python', 'pycocotools',
-          'torch==1.4.*', 'torchvision==0.5.*', 'yacs'
+          'acrv_datasets', 'numpy', 'opencv-python', 'pycocotools', 'torch',
+          'torchvision', 'yacs'
       ],
       ext_modules=get_extensions(),
       cmdclass={"build_ext": tcpp.BuildExtension},

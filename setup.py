@@ -36,7 +36,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='fcos',
-      version='0.9.3',
+      version='0.9.4',
       author='Ben Talbot',
       author_email='b.talbot@qut.edu.au',
       url='https://github.com/best-of-acrv/fcos',

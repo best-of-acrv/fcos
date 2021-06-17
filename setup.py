@@ -47,7 +47,7 @@ if not os.path.exists(os.path.join(sys.prefix, 'conda-meta')):
     install_requires_list.append('opencv-python')
 
 setup(name='fcos',
-      version='0.9.4',
+      version='0.9.6',
       author='Ben Talbot',
       author_email='b.talbot@qut.edu.au',
       url='https://github.com/best-of-acrv/fcos',

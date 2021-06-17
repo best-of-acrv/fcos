@@ -2,6 +2,7 @@ from glob import glob
 import os
 from pkg_resources import resource_filename
 from setuptools import find_packages, setup
+import sys
 import torch
 import torch.utils.cpp_extension as tcpp
 
@@ -35,8 +36,18 @@ def get_extensions():
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+# Hack to deal with opencv's diabolical naming conventions (conda installs
+# 'py-opencv', pip installs 'opencv-python'... pip check errors in conda as it
+# can't find 'opencv-python'... solution -> only require 'opencv-python' for
+# installsoutside of conda)
+install_requires_list = [
+    'acrv_datasets', 'numpy', 'pycocotools', 'torch', 'torchvision', 'yacs'
+]
+if not os.path.exists(os.path.join(sys.prefix, 'conda-meta')):
+    install_requires_list.append('opencv-python')
+
 setup(name='fcos',
-      version='0.9.4',
+      version='0.9.6',
       author='Ben Talbot',
       author_email='b.talbot@qut.edu.au',
       url='https://github.com/best-of-acrv/fcos',
@@ -45,10 +56,7 @@ setup(name='fcos',
       long_description_content_type='text/markdown',
       packages=find_packages(),
       package_data={'fcos': ['configs/*.yaml']},
-      install_requires=[
-          'acrv_datasets', 'numpy', 'opencv-python', 'pycocotools', 'torch',
-          'torchvision', 'yacs'
-      ],
+      install_requires=install_requires_list,
       ext_modules=get_extensions(),
       cmdclass={"build_ext": tcpp.BuildExtension},
       classifiers=(

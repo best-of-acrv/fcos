@@ -112,10 +112,10 @@ def main():
                          help="Name of the dataset to use from 'acrv_datasets "
                          "--supported_datasets' (value in config will be used "
                          "if not supplied)")
-    p_eval.add_argument('--dataset-dir',
-                        default=None,
-                        help="Search this directory for datasets instead "
-                        "of the current default in 'acrv_datasets'")
+    p_train.add_argument('--dataset-dir',
+                         default=None,
+                         help="Search this directory for datasets instead "
+                         "of the current default in 'acrv_datasets'")
     p_train.add_argument('--output-directory',
                          default=os.path.expanduser('~/fcos-output'),
                          help="Location where checkpoints and training "

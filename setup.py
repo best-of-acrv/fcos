@@ -59,7 +59,7 @@ setup(name='fcos',
       install_requires=install_requires_list,
       ext_modules=get_extensions(),
       cmdclass={"build_ext": tcpp.BuildExtension},
-      entry_points={'console_scripts': ['fcos=fcos.__main__.main']},
+      entry_points={'console_scripts': ['fcos=fcos.__main__:main']},
       classifiers=(
           "Development Status :: 4 - Beta",
           "Programming Language :: Python :: 3",

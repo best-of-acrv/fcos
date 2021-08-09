@@ -104,6 +104,8 @@ class Fcos(object):
         if dataset_name is not None:
             dataset_name = _sanitise_arg(dataset_name, 'dataset_name',
                                          Fcos.DATASETS.keys())
+        if not os.path.exists(output_directory):
+            os.makedirs(output_directory, exist_ok=True)
 
         # Apply configuration settings
         cfg.defrost()

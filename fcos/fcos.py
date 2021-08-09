@@ -49,16 +49,15 @@ class Fcos(object):
             'https://cloudstor.aarnet.edu.au/plus/s/eqbxb8owOu5J97O/download'
     }
 
-    def __init__(
-            self,
-            *,
-            config_file=config_by_name('FCOS_imprv_dcnv2_R_50_FPN_1x.yaml'),
-            config_list=None,
-            gpu_id=0,
-            load_checkpoint=None,
-            load_pretrained='FCOS_imprv_dcnv2_R_50_FPN_1x',
-            model_seed=0,
-            name='fcos'):
+    def __init__(self,
+                 *,
+                 config_file=config_by_name('FCOS_imprv_R_50_FPN_1x.yaml'),
+                 config_list=None,
+                 gpu_id=0,
+                 load_checkpoint=None,
+                 load_pretrained='FCOS_imprv_R_50_FPN_1x',
+                 model_seed=0,
+                 name='fcos'):
         # Apply sanitised args
         self.config_file = config_file
         self.config_list = config_list

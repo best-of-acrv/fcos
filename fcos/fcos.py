@@ -151,10 +151,11 @@ class Fcos(object):
         elif image is not None and image_file is not None:
             raise ValueError("Either 'image' or 'image_file' must be provided")
         if output_file is not None:
+            output_file = os.path.expanduser(output_file)
             os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
         # Obtain the input image
-        img = (np.array(Image.open(image_file))[:, :, ::-1]
+        img = (np.array(Image.open(os.path.expanduser(image_file)))[:, :, ::-1]
                if image_file else image)
 
         # Perform the forward pass

@@ -41,7 +41,12 @@ with open("README.md", "r") as fh:
 # can't find 'opencv-python'... solution -> only require 'opencv-python' for
 # installsoutside of conda)
 install_requires_list = [
-    'acrv_datasets', 'numpy', 'pycocotools', 'torch', 'torchvision', 'yacs'
+    'acrv_datasets',
+    'numpy',
+    'pycocotools==2.0.1',  # 2.0.2 causes: https://github.com/tensorflow/models/issues/9749 
+    'torch',
+    'torchvision',
+    'yacs'
 ]
 if not os.path.exists(os.path.join(sys.prefix, 'conda-meta')):
     install_requires_list.append('opencv-python')

@@ -160,7 +160,9 @@ class Fcos(object):
             raise ValueError("Either 'image' or 'image_file' must be provided")
         if output_file is not None:
             output_file = os.path.expanduser(output_file)
-            os.makedirs(os.path.dirname(output_file), exist_ok=True)
+            dn = os.path.dirname(output_file)
+            if dn:
+                os.makedirs(dn, exist_ok=True)
 
         # Obtain the input image
         img = (np.array(Image.open(os.path.expanduser(image_file)))[:, :, ::-1]

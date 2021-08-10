@@ -51,7 +51,7 @@ class Fcos(object):
 
     def __init__(self,
                  *,
-                 config_file=config_by_name('FCOS_imprv_R_50_FPN_1x.yaml'),
+                 config_file=None,
                  config_list=None,
                  gpu_id=0,
                  load_checkpoint=None,
@@ -59,7 +59,6 @@ class Fcos(object):
                  model_seed=0,
                  name='fcos'):
         # Apply sanitised args
-        self.config_file = config_file
         self.config_list = config_list
         self.gpu_id = gpu_id
         self.model_seed = model_seed
@@ -72,6 +71,15 @@ class Fcos(object):
                                               lower=False))
         self.load_checkpoint = (None if load_checkpoint is None else
                                 os.path.expanduser(load_checkpoint))
+
+        if self.load_pretrained is None and config_file is None:
+            self.config_file = config_by_name('FCOS_imprv_R_50_FPN_1x')
+        elif self.load_pretrained is not None:
+            self.config_file = config_by_name(self.load_pretrained)
+            print("\nOverriding 'config_file' selection to match "
+                  "'load_pretrained':\n%s" % self.config_file)
+        else:
+            self.config_file = config_file
 
         # Try setting up GPU integration
         os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'

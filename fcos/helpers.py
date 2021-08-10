@@ -13,8 +13,8 @@ def cache_location():
 
 
 def config_by_name(name, must_exist=True):
-    fn = pkg_resources.resource_filename(__name__,
-                                         os.path.join(_CONFIGS_LOCATION, name))
+    fn = pkg_resources.resource_filename(
+        __name__, os.path.join(_CONFIGS_LOCATION, '%s.yaml' % name))
     if must_exist and not os.path.exists(fn):
         raise ValueError('No config exists with the filepath:\n\t%s' % fn)
     return fn

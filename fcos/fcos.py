@@ -49,18 +49,16 @@ class Fcos(object):
             'https://cloudstor.aarnet.edu.au/plus/s/eqbxb8owOu5J97O/download'
     }
 
-    def __init__(
-            self,
-            *,
-            config_file=config_by_name('FCOS_imprv_dcnv2_R_50_FPN_1x.yaml'),
-            config_list=None,
-            gpu_id=0,
-            load_checkpoint=None,
-            load_pretrained='FCOS_imprv_dcnv2_R_50_FPN_1x',
-            model_seed=0,
-            name='fcos'):
+    def __init__(self,
+                 *,
+                 config_file=None,
+                 config_list=None,
+                 gpu_id=0,
+                 load_checkpoint=None,
+                 load_pretrained='FCOS_imprv_R_50_FPN_1x',
+                 model_seed=0,
+                 name='fcos'):
         # Apply sanitised args
-        self.config_file = config_file
         self.config_list = config_list
         self.gpu_id = gpu_id
         self.model_seed = model_seed
@@ -73,6 +71,15 @@ class Fcos(object):
                                               lower=False))
         self.load_checkpoint = (None if load_checkpoint is None else
                                 os.path.expanduser(load_checkpoint))
+
+        if self.load_pretrained is None and config_file is None:
+            self.config_file = config_by_name('FCOS_imprv_R_50_FPN_1x')
+        elif self.load_pretrained is not None:
+            self.config_file = config_by_name(self.load_pretrained)
+            print("\nOverriding 'config_file' selection to match "
+                  "'load_pretrained':\n%s" % self.config_file)
+        else:
+            self.config_file = config_file
 
         # Try setting up GPU integration
         os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
@@ -105,6 +112,8 @@ class Fcos(object):
         if dataset_name is not None:
             dataset_name = _sanitise_arg(dataset_name, 'dataset_name',
                                          Fcos.DATASETS.keys())
+        if not os.path.exists(output_directory):
+            os.makedirs(output_directory, exist_ok=True)
 
         # Apply configuration settings
         cfg.defrost()
@@ -134,7 +143,7 @@ class Fcos(object):
                       cfg.MODEL.RPN_ONLY),
             device=cfg.MODEL.DEVICE,
             expected_results=cfg.TEST.EXPECTED_RESULTS,
-            expected_results_sigma_tol=cfg.EST.EXPECTED_RESULTS_SIGMA_TOL,
+            expected_results_sigma_tol=cfg.TEST.EXPECTED_RESULTS_SIGMA_TOL,
             output_folder=cfg.OUTPUT_DIR)
 
     def predict(self,
@@ -150,10 +159,13 @@ class Fcos(object):
         elif image is not None and image_file is not None:
             raise ValueError("Either 'image' or 'image_file' must be provided")
         if output_file is not None:
-            os.makedirs(os.path.dirname(output_file), exist_ok=True)
+            output_file = os.path.expanduser(output_file)
+            dn = os.path.dirname(output_file)
+            if dn:
+                os.makedirs(dn, exist_ok=True)
 
         # Obtain the input image
-        img = (np.array(Image.open(image_file))[:, :, ::-1]
+        img = (np.array(Image.open(os.path.expanduser(image_file)))[:, :, ::-1]
                if image_file else image)
 
         # Perform the forward pass

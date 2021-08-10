@@ -41,13 +41,18 @@ with open("README.md", "r") as fh:
 # can't find 'opencv-python'... solution -> only require 'opencv-python' for
 # installsoutside of conda)
 install_requires_list = [
-    'acrv_datasets', 'numpy', 'pycocotools', 'torch', 'torchvision', 'yacs'
+    'acrv_datasets',
+    'numpy',
+    'pycocotools==2.0.1',  # 2.0.2 causes: https://github.com/tensorflow/models/issues/9749 
+    'torch',
+    'torchvision',
+    'yacs'
 ]
 if not os.path.exists(os.path.join(sys.prefix, 'conda-meta')):
     install_requires_list.append('opencv-python')
 
 setup(name='fcos',
-      version='0.9.6',
+      version='0.9.7',
       author='Ben Talbot',
       author_email='b.talbot@qut.edu.au',
       url='https://github.com/best-of-acrv/fcos',
@@ -59,6 +64,7 @@ setup(name='fcos',
       install_requires=install_requires_list,
       ext_modules=get_extensions(),
       cmdclass={"build_ext": tcpp.BuildExtension},
+      entry_points={'console_scripts': ['fcos=fcos.__main__:main']},
       classifiers=(
           "Development Status :: 4 - Beta",
           "Programming Language :: Python :: 3",

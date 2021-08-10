@@ -1,4 +1,5 @@
 import os
+import colorsys
 import cv2
 import numpy as np
 import torch
@@ -154,7 +155,13 @@ class Evaluator(nn.Module):
         self.masker = Masker(threshold=mask_threshold, padding=1)
 
         # used to make colors for each class
-        self.palette = torch.tensor([2**25 - 1, 2**15 - 1, 2**21 - 1])
+        self.cat_colors = np.apply_along_axis(
+            lambda r: colorsys.hsv_to_rgb(r[0], r[1], r[2]),
+            axis=1,
+            arr=np.c_[
+                np.linspace(0, 1, len(Evaluator.CATEGORIES), endpoint=False),
+                np.full(len(Evaluator.CATEGORIES), 1),
+                np.full(len(Evaluator.CATEGORIES), 0.75)])
         self.cpu_device = torch.device("cpu")
         self.confidence_thresholds_for_classes = torch.tensor(
             confidence_thresholds_for_classes)
@@ -279,9 +286,8 @@ class Evaluator(nn.Module):
         """
         Simple function that adds fixed colors depending on the class
         """
-        colors = labels[:, None] * self.palette
-        colors = (colors % 255).numpy().astype("uint8")
-        return colors
+        return np.atleast_2d(
+            (self.cat_colors[labels[:]] * 255).astype("uint8"))
 
     def overlay_boxes(self, image, predictions):
         """
@@ -296,10 +302,11 @@ class Evaluator(nn.Module):
         boxes = predictions.bbox
 
         colors = self.compute_colors_for_labels(labels).tolist()
-
         for box, color in zip(boxes, colors):
             box = box.to(torch.int64)
             top_left, bottom_right = box[:2].tolist(), box[2:].tolist()
+            image = cv2.rectangle(image, tuple(top_left), tuple(bottom_right),
+                                  (255, 255, 255), 3)
             image = cv2.rectangle(image, tuple(top_left), tuple(bottom_right),
                                   tuple(color), 2)
 
@@ -392,14 +399,19 @@ class Evaluator(nn.Module):
         labels = [self.CATEGORIES[i] for i in labels]
         boxes = predictions.bbox
 
+        colors = self.compute_colors_for_labels(
+            predictions.get_field("labels")).tolist()
+
         template = "{}: {:.2f}"
-        for box, score, label in zip(boxes, scores, labels):
+        for box, score, label, color in zip(boxes, scores, labels, colors):
             x, y = box[:2]
             x = int(round(x.item()))
             y = int(round(y.item()))
             s = template.format(label, score)
-            cv2.putText(image, s, (x, y), cv2.FONT_HERSHEY_SIMPLEX, .5,
-                        (255, 255, 255), 1)
+            cv2.putText(image, s, (x, y - 8), cv2.FONT_HERSHEY_SIMPLEX, .75,
+                        (255, 255, 255), 2)
+            cv2.putText(image, s, (x, y - 8), cv2.FONT_HERSHEY_SIMPLEX, .75,
+                        tuple(color), 1)
 
         return image
 

@@ -36,7 +36,7 @@ def main():
     p_parent = argparse.ArgumentParser(add_help=False)
     p_parent.add_argument(
         '--config-file',
-        default=config_by_name('FCOS_imprv_dcnv2_R_50_FPN_1x.yaml'),
+        default=None,
         help='YAML file from which to load FCOS configuration')
     p_parent.add_argument(
         '--config-list',

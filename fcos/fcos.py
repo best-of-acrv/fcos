@@ -229,7 +229,7 @@ def _load_datasets(dataset_dir, is_train=False, quiet=False):
     if not quiet:
         print("\nGETTING DATASET:")
     if dataset_dir is None:
-        dataset_dir = acrv_datasets.get_datasets_directory()
+        dataset_dir = acrv_datasets.get_datasets_directory()[0]
         if not dataset_dir:
             raise ValueError("Failed to get dataset '%s' using acrv_datasets" %
                              dataset_name)

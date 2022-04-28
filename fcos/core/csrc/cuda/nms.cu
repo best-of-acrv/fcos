@@ -62,7 +62,7 @@ __global__ void nms_kernel(const int n_boxes, const float nms_overlap_thresh,
         t |= 1ULL << i;
       }
     }
-    const int col_blocks = ceil_div(n_boxes, threadsPerBlock);
+    const int col_blocks = at::ceil_div(n_boxes, threadsPerBlock);
     dev_mask[cur_box_idx * col_blocks + col_start] = t;
   }
 }
@@ -77,7 +77,7 @@ at::Tensor nms_cuda(const at::Tensor boxes, float nms_overlap_thresh) {
 
   int boxes_num = boxes.size(0);
 
-  const int col_blocks = ceil_div(boxes_num, threadsPerBlock);
+  const int col_blocks = at::ceil_div(boxes_num, threadsPerBlock);
 
   scalar_t* boxes_dev = boxes_sorted.data<scalar_t>();
 
@@ -89,8 +89,8 @@ at::Tensor nms_cuda(const at::Tensor boxes, float nms_overlap_thresh) {
 
   mask_dev = (unsigned long long*) THCudaMalloc(state, boxes_num * col_blocks * sizeof(unsigned long long));
 
-  dim3 blocks(ceil_div(boxes_num, threadsPerBlock),
-              ceil_div(boxes_num, threadsPerBlock));
+  dim3 blocks(at::ceil_div(boxes_num, threadsPerBlock),
+              at::ceil_div(boxes_num, threadsPerBlock));
   dim3 threads(threadsPerBlock);
   nms_kernel<<<blocks, threads>>>(boxes_num,
                                   nms_overlap_thresh,

@@ -92,7 +92,7 @@ at::Tensor ml_nms_cuda(const at::Tensor boxes, float nms_overlap_thresh) {
   //C10_CUDA_CHECK(THCudaMalloc(state, (void**) &mask_dev,
   //                      boxes_num * col_blocks * sizeof(unsigned long long)));
 
-  mask_dev = (unsigned long long*) THCudaMalloc(state, boxes_num * col_blocks * sizeof(unsigned long long));
+  mask_dev = (unsigned long long*) c10::cuda::CUDACachingAllocator::raw_alloc(boxes_num * col_blocks * sizeof(unsigned long long));
 
   dim3 blocks(at::ceil_div(boxes_num, threadsPerBlock),
               at::ceil_div(boxes_num, threadsPerBlock));

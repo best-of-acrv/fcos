@@ -81,8 +81,6 @@ at::Tensor nms_cuda(const at::Tensor boxes, float nms_overlap_thresh) {
 
   scalar_t* boxes_dev = boxes_sorted.data<scalar_t>();
 
-  THCState *state = at::globalContext().lazyInitCUDA(); // TODO replace with getTHCState
-
   unsigned long long* mask_dev = NULL;
   //C10_CUDA_CHECK(THCudaMalloc(state, (void**) &mask_dev,
   //                      boxes_num * col_blocks * sizeof(unsigned long long)));
@@ -123,7 +121,6 @@ at::Tensor nms_cuda(const at::Tensor boxes, float nms_overlap_thresh) {
     }
   }
 
-  THCudaFree(state, mask_dev);
   // TODO improve this part
   return std::get<0>(order_t.index({
                        keep.narrow(/*dim=*/0, /*start=*/0, /*length=*/num_to_keep).to(
